@@ -137,6 +137,14 @@
     color:#101203;font-family:'Golos Text';font-size:15.5px;font-weight:600;
     padding:15px;border-radius:13px;margin-top:14px;
   }
+  .c-actions{display:none;gap:8px;margin:-3px 0 9px;padding:0 2px}
+  .c-actions.open{display:flex}
+  .c-actions button{
+    flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);
+    background:var(--surface);color:var(--muted);font-family:'Golos Text';
+    font-size:13px;font-weight:500;cursor:pointer;
+  }
+  .c-actions button.danger{color:var(--red);border-color:#3A2320}
 
   /* ===== Финансы ===== */
   .fin-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
@@ -580,24 +588,101 @@ const demoClients = [
   {n:'Мария Лебедева',  s:'Архив · вернётся в августе',  t:'pay'},
 ];
 const clientList = document.getElementById('clientList');
-function renderClients(filter=''){
-  clientList.innerHTML = '';
-  const src = real
-    ? myClients.map(c=>({n:c.name, s:c.phone || 'приглашение не отправлено', t:'ab'}))
-    : demoClients;
-  src
-    .filter(c=>c.n.toLowerCase().includes(filter.toLowerCase()))
-    .forEach(c=>{
-      const tagTxt = c.t==='debt' ? 'долг' : c.t==='ab' ? 'активен' : '—';
-      clientList.innerHTML += `
-        <div class="client">
-          <div class="c-ava">${c.n[0]}</div>
-          <div class="who"><b>${c.n}</b><span>${c.s}</span></div>
-          <span class="tag ${c.t}">${tagTxt}</span>
-        </div>`;
+let curFilter = '';
+function askConfirm(msg, cb){
+  if (tg?.showConfirm) tg.showConfirm(msg, ok => { if (ok) cb(); });
+  else if (window.confirm(msg)) cb();
+}
+function clientRow(c, archived){
+  const wrap = document.createElement('div');
+  const el = document.createElement('div');
+  el.className = 'client';
+  if (archived) el.style.opacity = .6;
+  el.innerHTML = `
+    <div class="c-ava">${(c.name[0]||'?').toUpperCase()}</div>
+    <div class="who"><b>${c.name}</b><span>${archived ? 'в архиве' : (c.phone || 'приглашение не отправлено')}</span></div>
+    <span class="tag ${archived ? 'pay' : 'ab'}">${archived ? 'архив' : 'активен'}</span>`;
+  const actions = document.createElement('div');
+  actions.className = 'c-actions';
+  const mkBtn = (label, cls, fn) => {
+    const b = document.createElement('button');
+    b.textContent = label; if (cls) b.className = cls;
+    b.onclick = e => { e.stopPropagation(); fn(); };
+    actions.appendChild(b);
+  };
+  if (!archived){
+    mkBtn('В архив', '', async () => {
+      try {
+        await api('client_set_status', { client_id: c.id, status: 'archived' });
+        c.status = 'archived'; renderClients(curFilter);
+        toast(`<b>${c.name}</b> — в архиве, история сохранена`);
+      } catch(e){ toast('Ошибка — попробуйте ещё раз'); }
     });
-  if (real && !src.length){
+  } else {
+    mkBtn('Вернуть', '', async () => {
+      try {
+        await api('client_set_status', { client_id: c.id, status: 'active' });
+        c.status = 'active'; renderClients(curFilter);
+        toast(`<b>${c.name}</b> снова в строю`);
+      } catch(e){ toast('Ошибка — попробуйте ещё раз'); }
+    });
+  }
+  mkBtn('Удалить навсегда', 'danger', () => {
+    askConfirm(`Удалить «${c.name}» навсегда? История пропадёт безвозвратно.`, async () => {
+      try {
+        await api('client_delete', { client_id: c.id });
+        myClients = myClients.filter(x => x.id !== c.id);
+        renderClients(curFilter);
+        toast('Удалено');
+      } catch(e){ toast('Ошибка — попробуйте ещё раз'); }
+    });
+  });
+  el.onclick = () => {
+    const wasOpen = actions.classList.contains('open');
+    document.querySelectorAll('.c-actions').forEach(a => a.classList.remove('open'));
+    if (!wasOpen) actions.classList.add('open');
+  };
+  wrap.append(el, actions);
+  return wrap;
+}
+function renderClients(filter=''){
+  curFilter = filter;
+  clientList.innerHTML = '';
+  if (!real){
+    demoClients
+      .filter(c=>c.n.toLowerCase().includes(filter.toLowerCase()))
+      .forEach(c=>{
+        const tagTxt = c.t==='debt' ? 'долг' : c.t==='ab' ? 'активен' : '—';
+        clientList.innerHTML += `
+          <div class="client">
+            <div class="c-ava">${c.n[0]}</div>
+            <div class="who"><b>${c.n}</b><span>${c.s}</span></div>
+            <span class="tag ${c.t}">${tagTxt}</span>
+          </div>`;
+      });
+    return;
+  }
+  const f = filter.toLowerCase();
+  const active = myClients.filter(c => c.status !== 'archived' && c.name.toLowerCase().includes(f));
+  const archived = myClients.filter(c => c.status === 'archived' && c.name.toLowerCase().includes(f));
+  if (!active.length){
     clientList.innerHTML = '<p class="hint" style="text-align:center;margin:20px 0">Пока пусто — добавьте первого клиента</p>';
+  }
+  active.forEach(c => clientList.appendChild(clientRow(c, false)));
+  if (archived.length){
+    const head = document.createElement('div');
+    head.className = 'section-title';
+    head.style.cursor = 'pointer';
+    head.innerHTML = `<h2>Архив</h2><span>${archived.length} · показать</span>`;
+    const box = document.createElement('div');
+    box.style.display = 'none';
+    head.onclick = () => {
+      const open = box.style.display === 'none';
+      box.style.display = open ? 'block' : 'none';
+      head.querySelector('span').textContent = `${archived.length} · ${open ? 'скрыть' : 'показать'}`;
+    };
+    clientList.append(head, box);
+    archived.forEach(c => box.appendChild(clientRow(c, true)));
   }
 }
 renderClients();
