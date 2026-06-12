@@ -315,6 +315,14 @@
 <section class="screen" id="scr-clients">
   <input class="search" id="clientSearch" placeholder="Поиск клиента...">
   <div id="clientList"></div>
+  <div class="form" id="cForm" style="margin-top:14px">
+    <h3>Новый клиент</h3>
+    <div class="f-grid">
+      <div class="f"><label>Имя</label><input id="cName" placeholder="Анна" style="font-family:'Golos Text';font-size:15px"></div>
+      <div class="f"><label>Телефон</label><input id="cPhone" inputmode="tel" placeholder="+7..." style="font-family:'Golos Text';font-size:15px"></div>
+    </div>
+    <button class="save" id="cSave">Сохранить клиента</button>
+  </div>
   <button class="add-btn" id="addClient">+ Добавить клиента</button>
 </section>
 
@@ -452,6 +460,55 @@ function toast(html){
 }
 const fnum = n => String(n).replace('.', ',');
 
+/* ───────── База данных ───────── */
+const API_URL = 'https://gcdljtkqtjewejssamhb.supabase.co/functions/v1/api';
+const API_KEY = 'sb_publishable_-no3M7Lpk_ggNaK9MfLyog_7Hf5564t';
+const DEV = new URLSearchParams(location.search).get('dev'); // тест из браузера: ?dev=секрет
+let real = false;       // подключены ли настоящие данные
+let me = null;          // запись тренера из базы
+let myClients = [];     // настоящие клиенты
+
+async function api(action, payload = {}){
+  const r = await fetch(API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': API_KEY,
+      'Authorization': 'Bearer ' + API_KEY,
+    },
+    body: JSON.stringify({
+      action,
+      initData: tg?.initData || '',
+      dev: DEV ? { secret: DEV, user: { id: 1, first_name: 'Дмитрий' } } : undefined,
+      ...payload,
+    }),
+  });
+  const data = await r.json();
+  if (!r.ok || data.error) throw new Error(data.error || ('HTTP ' + r.status));
+  return data;
+}
+
+async function boot(){
+  if (!tg?.initData && !DEV) return;   // вне Telegram и без тест-режима — демо
+  try {
+    const res = await api('bootstrap');
+    if (res.role === 'trainer'){
+      real = true;
+      me = res.trainer;
+      myClients = res.clients || [];
+      userName = me.name || userName;
+      if (role === 'trainer') setRole('trainer');
+      renderClients();
+      const trial = me.trial_ends_at ? new Date(me.trial_ends_at) : null;
+      document.getElementById('subtitle').textContent =
+        trial ? `триал до ${trial.getDate()}.${String(trial.getMonth()+1).padStart(2,'0')}` : 'Дневник тренера';
+      toast('База подключена · <b>данные настоящие</b>');
+    }
+  } catch(e){
+    console.error('boot:', e);
+  }
+}
+
 /* ───────── Роли и навигация ───────── */
 const NAVS = {
   trainer: [
@@ -525,7 +582,10 @@ const demoClients = [
 const clientList = document.getElementById('clientList');
 function renderClients(filter=''){
   clientList.innerHTML = '';
-  demoClients
+  const src = real
+    ? myClients.map(c=>({n:c.name, s:c.phone || 'приглашение не отправлено', t:'ab'}))
+    : demoClients;
+  src
     .filter(c=>c.n.toLowerCase().includes(filter.toLowerCase()))
     .forEach(c=>{
       const tagTxt = c.t==='debt' ? 'долг' : c.t==='ab' ? 'активен' : '—';
@@ -536,10 +596,35 @@ function renderClients(filter=''){
           <span class="tag ${c.t}">${tagTxt}</span>
         </div>`;
     });
+  if (real && !src.length){
+    clientList.innerHTML = '<p class="hint" style="text-align:center;margin:20px 0">Пока пусто — добавьте первого клиента</p>';
+  }
 }
 renderClients();
 document.getElementById('clientSearch').oninput = e=>renderClients(e.target.value);
-document.getElementById('addClient').onclick = ()=>toast('Добавление клиентов — <b>после подключения базы</b>');
+const cForm = document.getElementById('cForm');
+document.getElementById('addClient').onclick = ()=>{
+  if (!real){ toast('Добавление клиентов — <b>после подключения базы</b>'); return; }
+  cForm.classList.toggle('open');
+  if (cForm.classList.contains('open')) document.getElementById('cName').focus();
+};
+document.getElementById('cSave').onclick = async ()=>{
+  const name = document.getElementById('cName').value.trim();
+  const phone = document.getElementById('cPhone').value.trim();
+  if (!name){ toast('Введите имя клиента'); return; }
+  try {
+    const res = await api('client_add', { name, phone });
+    myClients.unshift(res.client);
+    document.getElementById('cName').value = '';
+    document.getElementById('cPhone').value = '';
+    cForm.classList.remove('open');
+    renderClients();
+    toast(`<b>${name}</b> добавлен${name.endsWith('а') ? 'а' : ''} в базу`);
+  } catch(e){
+    toast('Ошибка сохранения — попробуйте ещё раз');
+    console.error(e);
+  }
+};
 
 /* ───────── Конструктор программы ───────── */
 const bLibrary = ['Приседания со штангой','Жим лёжа','Становая тяга','Румынская тяга','Выпады с гантелями','Жим гантелей сидя','Тяга верхнего блока','Планка'];
@@ -721,6 +806,7 @@ mRender();
 
 /* ───────── Старт ───────── */
 setRole('trainer');
+boot();
 </script>
 </body>
 </html>
