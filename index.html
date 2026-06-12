@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Дневник тренера</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600&family=Golos+Text:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0C0D0F; --surface:#15171B; --surface-2:#1B1E23;
+    --line:#262A31; --text:#F2F3F5; --muted:#8A9099; --faint:#5B6470;
+    --volt:#D4FF3F; --volt-dim:#9DBF2B; --red:#FF8A75;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{background:var(--bg) !important;min-height:100%}
+  body{
+    color:var(--text);font-family:'Golos Text',system-ui,sans-serif;
+    -webkit-font-smoothing:antialiased;max-width:430px;margin:0 auto;
+    padding:max(14px,env(safe-area-inset-top)) 18px 96px;overflow-x:hidden;
+  }
+  body::before{content:'';position:fixed;inset:0;z-index:-1;background:var(--bg)}
+  .num{font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums}
+  .label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:500}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:12px}
+  .section-title{display:flex;justify-content:space-between;align-items:baseline;margin:20px 2px 11px}
+  .section-title h2{font-size:16px;font-weight:600}
+  .section-title span,.section-title a{font-size:12.5px;color:var(--faint);text-decoration:none}
+
+  /* Шапка */
+  header{display:flex;align-items:center;justify-content:space-between;padding:6px 0 16px}
+  .greet h1{font-size:20px;font-weight:600}
+  .greet p{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .role-pill{
+    display:flex;background:var(--surface);border:1px solid var(--line);
+    border-radius:11px;padding:3px;gap:2px;
+  }
+  .role-pill button{
+    border:none;background:none;color:var(--faint);cursor:pointer;
+    font-family:'Golos Text';font-size:12px;font-weight:600;
+    padding:7px 11px;border-radius:8px;
+  }
+  .role-pill button.on{background:var(--volt);color:#101203}
+
+  /* Экраны */
+  .screen{display:none}
+  .screen.on{display:block;animation:rise .4s cubic-bezier(.2,.8,.2,1)}
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}}
+
+  /* Нижняя навигация */
+  nav{
+    position:fixed;left:0;right:0;bottom:0;max-width:430px;margin:0 auto;
+    background:var(--bg);border-top:1px solid var(--line);
+    display:flex;padding:9px 8px max(9px,env(safe-area-inset-bottom));z-index:10;
+  }
+  nav button{
+    flex:1;background:none;border:none;cursor:pointer;
+    font-family:'Golos Text';font-size:10.5px;color:var(--faint);
+    display:flex;flex-direction:column;align-items:center;gap:5px;
+  }
+  nav button.on{color:var(--volt)}
+  nav svg{width:21px;height:21px}
+
+  /* Тост */
+  .toast{
+    position:fixed;left:50%;bottom:84px;transform:translateX(-50%) translateY(120px);
+    background:var(--surface-2);border:1px solid var(--line);color:var(--text);
+    font-size:13px;padding:10px 18px;border-radius:12px;white-space:nowrap;
+    transition:transform .3s cubic-bezier(.2,.8,.2,1);pointer-events:none;z-index:20;
+  }
+  .toast.show{transform:translateX(-50%) translateY(0)}
+  .toast b{color:var(--volt)}
+
+  /* ===== Дашборд тренера ===== */
+  .money{display:flex;justify-content:space-between;align-items:flex-end;gap:16px}
+  .money .sum{font-size:42px;line-height:1;font-weight:600;margin-top:10px}
+  .money .sum small{font-size:22px;color:var(--muted);font-weight:400}
+  .delta{font-size:13px;color:var(--volt);margin-top:8px;font-weight:500}
+  .spark{display:flex;align-items:flex-end;gap:5px;height:56px}
+  .spark i{width:9px;border-radius:3px;background:var(--surface-2)}
+  .spark i.hl{background:var(--volt)}
+  .day{display:flex;align-items:center;gap:20px}
+  .dial{position:relative;width:120px;height:120px;flex:none}
+  .dial svg{transform:rotate(-90deg)}
+  .dial .center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .dial .center b{font-family:'Oswald';font-size:28px;font-weight:600}
+  .dial .center b small{font-size:15px;color:var(--muted);font-weight:400}
+  .dial .center span{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-top:2px}
+  .day-info p{font-size:13.5px;color:var(--muted);line-height:1.55}
+  .day-info p b{color:var(--text)}
+  .slot{
+    display:flex;gap:13px;align-items:center;background:var(--surface);
+    border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:8px;
+  }
+  .slot.now{border:1.5px solid var(--volt);background:#1A1D12}
+  .slot.done{background:#101216;border-color:#1D2026}
+  .slot.done time{color:var(--faint)}
+  .slot.done .who b{color:var(--muted)}
+  .slot time{font-family:'Oswald';font-size:16px;font-weight:500;width:48px;flex:none}
+  .slot .who{flex:1;min-width:0}
+  .slot .who b{display:block;font-size:14px;font-weight:600}
+  .slot .who span{font-size:12px;color:var(--muted)}
+  .tag{font-size:11px;font-weight:600;padding:5px 9px;border-radius:7px;flex:none}
+  .tag.ab{background:#252B12;color:var(--volt)}
+  .tag.pay{background:var(--surface-2);color:#A6ACB5}
+  .tag.debt{background:#2C1714;color:var(--red)}
+  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px}
+  .stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:13px 12px}
+  .stat b{font-family:'Oswald';font-size:24px;font-weight:600;display:block}
+  .stat span{font-size:11px;color:var(--muted);line-height:1.3;display:block;margin-top:4px}
+
+  /* ===== Клиенты ===== */
+  .search{
+    width:100%;background:var(--surface);border:1px solid var(--line);
+    border-radius:13px;padding:13px 15px;color:var(--text);
+    font-family:'Golos Text';font-size:14.5px;margin-bottom:12px;
+  }
+  .search:focus{outline:none;border-color:#3A4048}
+  .search::placeholder{color:var(--faint)}
+  .client{
+    display:flex;align-items:center;gap:13px;background:var(--surface);
+    border:1px solid var(--line);border-radius:14px;padding:13px 15px;margin-bottom:8px;
+  }
+  .c-ava{
+    width:40px;height:40px;border-radius:50%;flex:none;
+    background:var(--surface-2);border:1px solid var(--line);
+    display:grid;place-items:center;font-family:'Oswald';font-size:15px;color:var(--volt);
+  }
+  .client .who{flex:1;min-width:0}
+  .client .who b{display:block;font-size:14.5px;font-weight:600}
+  .client .who span{font-size:12px;color:var(--muted)}
+  .add-btn{
+    display:block;width:100%;border:none;cursor:pointer;background:var(--volt);
+    color:#101203;font-family:'Golos Text';font-size:15.5px;font-weight:600;
+    padding:15px;border-radius:13px;margin-top:14px;
+  }
+
+  /* ===== Финансы ===== */
+  .fin-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
+  .fin{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:15px}
+  .fin b{font-family:'Oswald';font-size:23px;font-weight:600;display:block}
+  .fin b small{font-size:13px;color:var(--muted);font-weight:400}
+  .fin span{font-size:11.5px;color:var(--muted);display:block;margin-top:4px}
+  .fin-row{display:flex;justify-content:space-between;padding:11px 2px;border-bottom:1px solid #1A1D22;font-size:13.5px}
+  .fin-row:last-child{border:none}
+  .fin-row span{color:var(--muted)}
+  .fin-row b{font-family:'Oswald';font-weight:500}
+
+  /* ===== Конструктор программы ===== */
+  .summary{display:flex;gap:18px;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 16px;margin-bottom:14px}
+  .summary div b{font-family:'Oswald';font-size:19px;font-weight:600;display:block}
+  .summary div span{font-size:10.5px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em}
+  .ex{background:var(--surface);border:1px solid var(--line);border-radius:16px;margin-bottom:10px;padding:13px 15px}
+  .ex-head{display:flex;align-items:center;gap:10px}
+  .ex-num{font-family:'Oswald';font-size:13px;color:var(--faint);width:24px;height:24px;border:1px solid var(--line);border-radius:8px;display:grid;place-items:center;flex:none}
+  .ex-name{flex:1;font-size:15px;font-weight:600;border:none;background:none;color:var(--text);font-family:'Golos Text';min-width:0;padding:4px 6px;margin:-4px -6px;border-radius:8px}
+  .ex-name:focus{outline:none;background:var(--surface-2)}
+  .ex-name::placeholder{color:var(--faint);font-weight:400}
+  .del{width:30px;height:30px;border:none;background:none;color:var(--faint);cursor:pointer;border-radius:8px;flex:none;display:grid;place-items:center}
+  .del:active{color:var(--red)}
+  .del svg{width:17px;height:17px}
+  .params{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}
+  .param{background:var(--surface-2);border-radius:11px;padding:8px 9px}
+  .param .label{font-size:10px;display:block;margin-bottom:5px}
+  .stepper{display:flex;align-items:center;justify-content:space-between;gap:4px}
+  .stepper button{width:26px;height:26px;border-radius:7px;border:1px solid var(--line);background:var(--surface);color:var(--muted);font-size:14px;cursor:pointer;flex:none}
+  .stepper button:active{color:var(--volt)}
+  .stepper input{width:100%;min-width:0;text-align:center;border:none;background:none;font-family:'Oswald';font-size:16px;font-weight:500;color:var(--text)}
+  .stepper input:focus{outline:none;color:var(--volt)}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+  .chip{border:1px solid var(--line);background:var(--surface);color:var(--muted);font-family:'Golos Text';font-size:13px;padding:8px 13px;border-radius:20px;cursor:pointer}
+  .chip:active{border-color:var(--volt);color:var(--volt)}
+  .add-custom{width:100%;margin-top:10px;padding:13px;border-radius:13px;cursor:pointer;border:1.5px dashed #353B44;background:none;color:var(--muted);font-family:'Golos Text';font-size:14px;font-weight:500}
+  .note-card textarea{width:100%;border:none;background:none;resize:none;margin-top:8px;color:var(--text);font-family:'Golos Text';font-size:14px;line-height:1.5;min-height:54px}
+  .note-card textarea:focus{outline:none}
+  .send-row{display:flex;gap:10px;margin-top:14px}
+  .tpl{flex:none;width:52px;border-radius:13px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;display:grid;place-items:center}
+  .tpl svg{width:20px;height:20px}
+  .send{flex:1;border:none;cursor:pointer;background:var(--volt);color:#101203;font-family:'Golos Text';font-size:15.5px;font-weight:600;padding:15px;border-radius:13px}
+
+  /* ===== Дневник клиента ===== */
+  .pass{display:flex;align-items:center;gap:18px;margin-top:12px}
+  .pass-dots{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;flex:1}
+  .pass-dots i{height:8px;border-radius:4px;background:var(--surface-2)}
+  .pass-dots i.used{background:var(--volt)}
+  .pass-info b{font-family:'Oswald';font-size:28px;font-weight:600;display:block;line-height:1}
+  .pass-info b small{font-size:15px;color:var(--muted);font-weight:400}
+  .pass-info span{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+  .pass-note{font-size:12.5px;color:var(--muted);margin-top:12px}
+  .pass-note b{color:var(--text)}
+  .kbju{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .kbju div{background:var(--surface-2);border-radius:11px;padding:10px 6px;text-align:center}
+  .kbju b{font-family:'Oswald';font-size:17px;font-weight:500;display:block}
+  .kbju span{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em}
+  .coach-note{background:#15180D;border:1px solid #2A331A;border-radius:16px;padding:14px 16px;margin-bottom:12px;font-size:13.5px;line-height:1.5;color:#C9CFB8}
+  .coach-note .label{color:var(--volt-dim);display:block;margin-bottom:5px}
+  .hint{font-size:12px;color:var(--faint);margin:0 2px 12px}
+  .dx{background:var(--surface);border:1px solid var(--line);border-radius:16px;margin-bottom:10px;overflow:hidden}
+  .dx .ex-head{padding:13px 15px 9px}
+  .dx-meta{font-size:12px;color:var(--faint);padding:0 15px 10px 49px}
+  .dx-meta b{color:var(--muted);font-weight:500}
+  .dsets{border-top:1px solid #1D2026}
+  .dset{display:grid;grid-template-columns:42px 1fr auto;align-items:center;gap:10px;padding:8px 15px;border-bottom:1px solid #15171B}
+  .dset:last-child{border:none}
+  .dset .lbl{font-size:12px;color:var(--faint)}
+  .w{display:flex;align-items:center;gap:6px}
+  .w button{width:33px;height:33px;border-radius:9px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font-size:15px;cursor:pointer;font-family:'Golos Text'}
+  .w input{width:60px;text-align:center;border:none;background:none;font-family:'Oswald';font-size:17px;font-weight:500;color:var(--text);border-bottom:1px dashed #353B44;padding:2px 0}
+  .w input:focus{outline:none;border-bottom-color:var(--volt)}
+  .w small{font-size:11px;color:var(--faint)}
+  .chk{width:33px;height:33px;border-radius:10px;border:1.5px solid var(--line);background:none;cursor:pointer;display:grid;place-items:center;color:transparent}
+  .chk.on{background:var(--volt);border-color:var(--volt);color:#101203}
+  .chk svg{width:15px;height:15px}
+
+  /* ===== Замеры ===== */
+  .weight-row{display:flex;align-items:flex-end;justify-content:space-between;margin-top:8px}
+  .weight-now b{font-family:'Oswald';font-size:42px;font-weight:600;line-height:1}
+  .weight-now b small{font-size:20px;color:var(--muted);font-weight:400}
+  .deltas{text-align:right;font-size:12.5px;line-height:1.7}
+  .deltas .good{color:var(--volt);font-weight:600}
+  .deltas span{color:var(--faint)}
+  .chart-dates{display:flex;justify-content:space-between;font-size:10px;color:var(--faint);margin-top:6px}
+  .m-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .m{background:var(--surface-2);border-radius:12px;padding:11px 13px;display:flex;justify-content:space-between;align-items:center}
+  .m span{font-size:13px;color:var(--muted)}
+  .m b{font-family:'Oswald';font-size:17px;font-weight:500}
+  .m b small{font-size:11px;color:var(--faint);font-weight:400}
+  .m i{font-style:normal;font-size:11px;font-weight:600;margin-left:6px}
+  .m i.dn{color:var(--volt)} .m i.up{color:var(--red)} .m i.sm{color:var(--faint)}
+  .form{display:none;background:var(--surface);border:1.5px solid var(--volt);border-radius:18px;padding:17px;margin-bottom:14px}
+  .form.open{display:block}
+  .form h3{font-size:15px;font-weight:600;margin-bottom:13px}
+  .f-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .f{background:var(--surface-2);border-radius:11px;padding:9px 12px}
+  .f label{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:block;margin-bottom:3px}
+  .f input{width:100%;border:none;background:none;color:var(--text);font-family:'Oswald';font-size:17px;font-weight:500}
+  .f input:focus{outline:none;color:var(--volt)}
+  .f input::placeholder{color:#3A4048;font-weight:400}
+  .form .save{width:100%;border:none;cursor:pointer;margin-top:13px;background:var(--volt);color:#101203;font-family:'Golos Text';font-size:15px;font-weight:600;padding:13px;border-radius:11px}
+  .h-entry{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:12px 15px;margin-bottom:8px}
+  .h-top{display:flex;justify-content:space-between;align-items:baseline}
+  .h-top b{font-family:'Oswald';font-size:16px;font-weight:500}
+  .h-top b small{font-size:12px;color:var(--faint);font-weight:400}
+  .h-top time{font-size:12px;color:var(--faint)}
+  .h-m{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.5}
+
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="greet">
+    <h1 id="greeting">Дневник тренера</h1>
+    <p id="subtitle">демо-режим</p>
+  </div>
+  <div class="role-pill">
+    <button id="roleT" class="on">Тренер</button>
+    <button id="roleC">Клиент</button>
+  </div>
+</header>
+
+<!-- ════════ ТРЕНЕР: Сегодня ════════ -->
+<section class="screen on" id="scr-today">
+  <div class="card">
+    <div class="label">Заработано за неделю</div>
+    <div class="money">
+      <div>
+        <div class="sum num"><span id="weekSum">61 500</span> <small>₽</small></div>
+        <div class="delta">+18% к прошлой неделе</div>
+      </div>
+      <div class="spark" aria-hidden="true">
+        <i style="height:34%"></i><i style="height:55%"></i><i style="height:42%"></i>
+        <i style="height:72%"></i><i style="height:48%"></i><i style="height:88%" class="hl"></i>
+        <i style="height:24%"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="day">
+      <div class="dial">
+        <svg width="120" height="120" viewBox="0 0 128 128">
+          <g id="ticks"></g>
+          <circle cx="64" cy="64" r="52" fill="none" stroke="var(--surface-2)" stroke-width="6"/>
+          <circle id="arc" cx="64" cy="64" r="52" fill="none" stroke="var(--volt)" stroke-width="6"
+                  stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7"/>
+        </svg>
+        <div class="center"><b class="num">5<small>/8</small></b><span>слотов</span></div>
+      </div>
+      <div class="day-info">
+        <p>Сегодня <b>5 тренировок</b>, ближайшая — <b>Анна К.</b> в 18:00. Свободны 12:00, 14:00 и 20:00.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title"><h2>Сегодня</h2></div>
+  <div class="slot done"><time class="num">09:00</time><div class="who"><b>Михаил Орлов</b><span>Силовая · проведена</span></div><span class="tag ab">Абонемент 7/10</span></div>
+  <div class="slot done"><time class="num">11:00</time><div class="who"><b>Светлана Юрьева</b><span>Функциональная · проведена</span></div><span class="tag pay">Разовая · 3 500 ₽</span></div>
+  <div class="slot now"><time class="num">18:00</time><div class="who"><b>Анна Ковалёва</b><span>Персональная · подтверждена</span></div><span class="tag ab">Абонемент 3/10</span></div>
+  <div class="slot"><time class="num">19:00</time><div class="who"><b>Игорь Стрельцов</b><span>Силовая</span></div><span class="tag debt">Не оплачено</span></div>
+
+  <div class="section-title"><h2>Эта неделя</h2></div>
+  <div class="stats">
+    <div class="stat"><b class="num">23</b><span>тренировки проведено</span></div>
+    <div class="stat"><b class="num">2</b><span>новых клиента</span></div>
+    <div class="stat"><b class="num">3</b><span>продления абонементов</span></div>
+  </div>
+</section>
+
+<!-- ════════ ТРЕНЕР: Клиенты ════════ -->
+<section class="screen" id="scr-clients">
+  <input class="search" id="clientSearch" placeholder="Поиск клиента...">
+  <div id="clientList"></div>
+  <button class="add-btn" id="addClient">+ Добавить клиента</button>
+</section>
+
+<!-- ════════ ТРЕНЕР: Программа ════════ -->
+<section class="screen" id="scr-builder">
+  <div class="section-title" style="margin-top:0">
+    <h2>Программа · Анна Ковалёва</h2><span>на сегодня</span>
+  </div>
+  <div class="summary">
+    <div><b class="num" id="bSumEx">0</b><span>упражнений</span></div>
+    <div><b class="num" id="bSumSets">0</b><span>подходов</span></div>
+    <div><b class="num" id="bSumVol">0</b><span>тоннаж, кг</span></div>
+  </div>
+  <div id="bList"></div>
+  <span class="label">Добавить упражнение</span>
+  <div class="chips" id="bChips"></div>
+  <button class="add-custom" id="bAddCustom">+ Своё упражнение</button>
+  <div class="card note-card" style="margin-top:14px">
+    <span class="label">Комментарий для Анны</span>
+    <textarea>Сегодня день ног. В приседе пробуем 42,5 кг — в прошлый раз 40 шли уверенно. Колени держим над стопой.</textarea>
+  </div>
+  <div class="send-row">
+    <button class="tpl" id="bTpl" aria-label="Сохранить как шаблон">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z"/><path d="M14 3v5h5M9 14h6M9 17h6"/></svg>
+    </button>
+    <button class="send" id="bSend">Отправить Анне</button>
+  </div>
+</section>
+
+<!-- ════════ ТРЕНЕР: Финансы ════════ -->
+<section class="screen" id="scr-finance">
+  <div class="fin-grid">
+    <div class="fin"><b class="num">247 500 <small>₽</small></b><span>доход за июнь</span></div>
+    <div class="fin"><b class="num">+12%</b><span>к маю</span></div>
+    <div class="fin"><b class="num">9</b><span>абонементов продано</span></div>
+    <div class="fin"><b class="num">14</b><span>разовых тренировок</span></div>
+  </div>
+  <div class="card">
+    <div class="label" style="margin-bottom:8px">Последние поступления</div>
+    <div class="fin-row"><span>Анна К. · абонемент 10</span><b class="num">28 000 ₽</b></div>
+    <div class="fin-row"><span>Светлана Ю. · разовая</span><b class="num">3 500 ₽</b></div>
+    <div class="fin-row"><span>Михаил О. · абонемент 10</span><b class="num">28 000 ₽</b></div>
+    <div class="fin-row"><span>Павел Д. · разовая</span><b class="num">3 500 ₽</b></div>
+  </div>
+  <p class="hint" style="text-align:center">Долги клиентов и детальная аналитика появятся после подключения базы</p>
+</section>
+
+<!-- ════════ КЛИЕНТ: Дневник ════════ -->
+<section class="screen" id="scr-diary">
+  <div class="card">
+    <div class="label">Мой абонемент</div>
+    <div class="pass">
+      <div class="pass-info"><b class="num">7<small>/10</small></b><span>осталось</span></div>
+      <div class="pass-dots"><i class="used"></i><i class="used"></i><i class="used"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    </div>
+    <div class="pass-note">Действует до <b>10 июля</b> · продление — у тренера в один клик</div>
+  </div>
+  <div class="card">
+    <div class="label" style="margin-bottom:10px">Цели на день от тренера</div>
+    <div class="kbju">
+      <div><b class="num">1850</b><span>ккал</span></div>
+      <div><b class="num">130</b><span>белки</span></div>
+      <div><b class="num">60</b><span>жиры</span></div>
+      <div><b class="num">180</b><span>углеводы</span></div>
+    </div>
+  </div>
+  <div class="coach-note">
+    <span class="label">Комментарий тренера</span>
+    Сегодня день ног. В приседе пробуем 42,5 кг — в прошлый раз 40 шли уверенно. Колени держим над стопой.
+  </div>
+  <div class="section-title"><h2>Программа на сегодня</h2><span>от Дмитрия</span></div>
+  <p class="hint">Названия и веса можно править — тренер увидит изменения</p>
+  <div id="dProgram"></div>
+</section>
+
+<!-- ════════ КЛИЕНТ: Замеры ════════ -->
+<section class="screen" id="scr-body">
+  <div class="card">
+    <span class="label">Вес сейчас</span>
+    <div class="weight-row">
+      <div class="weight-now"><b class="num" id="mWNow"></b></div>
+      <div class="deltas">
+        <div><span>за всё время</span> <span class="good num" id="mDAll"></span></div>
+        <div><span>с прошлого</span> <span class="good num" id="mDLast"></span></div>
+      </div>
+    </div>
+    <div style="margin-top:16px">
+      <svg id="mChart" width="100%" height="88" viewBox="0 0 340 92" preserveAspectRatio="none"></svg>
+      <div class="chart-dates"><span id="mDFirst"></span><span id="mDLastDate"></span></div>
+    </div>
+  </div>
+  <div class="card">
+    <span class="label" style="display:block;margin-bottom:11px">Объёмы тела</span>
+    <div class="m-grid" id="mGrid"></div>
+    <p class="hint" style="margin:10px 0 0">Изменения — относительно первого замера</p>
+  </div>
+  <button class="add-btn" id="mAddBtn" style="margin:4px 0 14px">+ Записать новый замер</button>
+  <div class="form" id="mForm">
+    <h3>Новый замер · <span id="mFormDate"></span></h3>
+    <div class="f-grid">
+      <div class="f"><label>Вес, кг</label><input inputmode="decimal" id="inW" placeholder="64,9"></div>
+      <div class="f"><label>Талия, см</label><input inputmode="decimal" id="inWaist" placeholder="70"></div>
+      <div class="f"><label>Грудь, см</label><input inputmode="decimal" id="inChest" placeholder="91"></div>
+      <div class="f"><label>Бёдра, см</label><input inputmode="decimal" id="inHips" placeholder="98"></div>
+      <div class="f"><label>Бедро, см</label><input inputmode="decimal" id="inThigh" placeholder="57"></div>
+      <div class="f"><label>Бицепс, см</label><input inputmode="decimal" id="inArm" placeholder="27"></div>
+    </div>
+    <button class="save" id="mSaveBtn">Сохранить замер</button>
+  </div>
+  <div class="section-title"><h2>История</h2></div>
+  <div id="mHistory"></div>
+</section>
+
+<div class="toast" id="toast"></div>
+
+<nav id="nav"></nav>
+
+<script>
+/* ───────── Общее ───────── */
+const tg = window.Telegram?.WebApp;
+let userName = 'Дмитрий';
+if (tg){
+  tg.ready(); tg.expand();
+  tg.setHeaderColor?.('#0C0D0F'); tg.setBackgroundColor?.('#0C0D0F');
+  if (tg.initDataUnsafe?.user?.first_name) userName = tg.initDataUnsafe.user.first_name;
+}
+const toastEl = document.getElementById('toast');
+let toastTimer;
+function toast(html){
+  clearTimeout(toastTimer);
+  toastEl.innerHTML = html;
+  toastEl.classList.add('show');
+  toastTimer = setTimeout(()=>toastEl.classList.remove('show'), 1700);
+  tg?.HapticFeedback?.notificationOccurred?.('success');
+}
+const fnum = n => String(n).replace('.', ',');
+
+/* ───────── Роли и навигация ───────── */
+const NAVS = {
+  trainer: [
+    {id:'scr-today',   label:'Сегодня',  icon:'<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/>'},
+    {id:'scr-clients', label:'Клиенты',  icon:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.4 3.4-5 6.5-5s5.7 1.6 6.5 5M16.5 4.6a3.5 3.5 0 010 6.8M21.5 20c-.5-2.2-1.7-3.7-3.5-4.5"/>'},
+    {id:'scr-builder', label:'Программа',icon:'<path d="M3 8h4v8H3zM17 8h4v8h-4zM7 12h10M7 9.5v5M17 9.5v5"/>'},
+    {id:'scr-finance', label:'Финансы',  icon:'<path d="M4 19V10M10 19V5M16 19v-7M21 19H3"/>'},
+  ],
+  client: [
+    {id:'scr-diary', label:'Дневник', icon:'<path d="M3 8h4v8H3zM17 8h4v8h-4zM7 12h10M7 9.5v5M17 9.5v5"/>'},
+    {id:'scr-body',  label:'Замеры',  icon:'<path d="M4 19V10M10 19V5M16 19v-7M21 19H3"/>'},
+  ]
+};
+let role = 'trainer';
+const nav = document.getElementById('nav');
+
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on', s.id===id));
+  nav.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.id===id));
+  window.scrollTo({top:0});
+}
+function renderNav(){
+  nav.innerHTML = '';
+  NAVS[role].forEach((t,i)=>{
+    const b = document.createElement('button');
+    b.dataset.id = t.id;
+    b.innerHTML = `<svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">${t.icon}</svg>${t.label}`;
+    b.onclick = ()=>show(t.id);
+    nav.appendChild(b);
+    if (i===0) b.classList.add('on');
+  });
+  show(NAVS[role][0].id);
+}
+function setRole(r){
+  role = r;
+  document.getElementById('roleT').classList.toggle('on', r==='trainer');
+  document.getElementById('roleC').classList.toggle('on', r==='client');
+  const g = document.getElementById('greeting'), s = document.getElementById('subtitle');
+  if (r==='trainer'){ g.textContent = `Привет, ${userName}`; s.textContent = 'Дневник тренера · демо'; }
+  else { g.textContent = 'Привет, Анна'; s.textContent = 'Тренер — Дмитрий · демо'; }
+  renderNav();
+}
+document.getElementById('roleT').onclick = ()=>setRole('trainer');
+document.getElementById('roleC').onclick = ()=>setRole('client');
+
+/* ───────── Дашборд: циферблат ───────── */
+const ticks = document.getElementById('ticks');
+for (let i=0;i<60;i++){
+  const a=i*6*Math.PI/180, r1=60, r2=i%5===0?56.5:58.5;
+  const t=document.createElementNS('http://www.w3.org/2000/svg','line');
+  t.setAttribute('x1',64+r1*Math.cos(a)); t.setAttribute('y1',64+r1*Math.sin(a));
+  t.setAttribute('x2',64+r2*Math.cos(a)); t.setAttribute('y2',64+r2*Math.sin(a));
+  t.setAttribute('stroke', i%5===0?'#3A4048':'#23272E'); t.setAttribute('stroke-width','1.5');
+  ticks.appendChild(t);
+}
+setTimeout(()=>{
+  const arc=document.getElementById('arc');
+  arc.style.transition='stroke-dashoffset 1.1s cubic-bezier(.3,.8,.3,1)';
+  arc.style.strokeDashoffset = 326.7*(1-5/8);
+},350);
+
+/* ───────── Клиенты ───────── */
+const demoClients = [
+  {n:'Анна Ковалёва',   s:'Абонемент 3/10 · до 10 июля', t:'ab'},
+  {n:'Михаил Орлов',    s:'Абонемент 7/10 · до 2 июля',  t:'ab'},
+  {n:'Светлана Юрьева', s:'Разовые тренировки',          t:'pay'},
+  {n:'Игорь Стрельцов', s:'Долг 3 500 ₽',                t:'debt'},
+  {n:'Павел Дронов',    s:'Абонемент 9/10 · до 28 июня', t:'ab'},
+  {n:'Мария Лебедева',  s:'Архив · вернётся в августе',  t:'pay'},
+];
+const clientList = document.getElementById('clientList');
+function renderClients(filter=''){
+  clientList.innerHTML = '';
+  demoClients
+    .filter(c=>c.n.toLowerCase().includes(filter.toLowerCase()))
+    .forEach(c=>{
+      const tagTxt = c.t==='debt' ? 'долг' : c.t==='ab' ? 'активен' : '—';
+      clientList.innerHTML += `
+        <div class="client">
+          <div class="c-ava">${c.n[0]}</div>
+          <div class="who"><b>${c.n}</b><span>${c.s}</span></div>
+          <span class="tag ${c.t}">${tagTxt}</span>
+        </div>`;
+    });
+}
+renderClients();
+document.getElementById('clientSearch').oninput = e=>renderClients(e.target.value);
+document.getElementById('addClient').onclick = ()=>toast('Добавление клиентов — <b>после подключения базы</b>');
+
+/* ───────── Конструктор программы ───────── */
+const bLibrary = ['Приседания со штангой','Жим лёжа','Становая тяга','Румынская тяга','Выпады с гантелями','Жим гантелей сидя','Тяга верхнего блока','Планка'];
+let bProgram = [
+  {name:'Приседания со штангой', sets:4, reps:8,  w:42.5},
+  {name:'Румынская тяга',        sets:3, reps:10, w:37.5},
+  {name:'Выпады с гантелями',    sets:3, reps:12, w:12},
+];
+const bList = document.getElementById('bList');
+function bSummary(){
+  document.getElementById('bSumEx').textContent = bProgram.length;
+  document.getElementById('bSumSets').textContent = bProgram.reduce((s,e)=>s+e.sets,0);
+  document.getElementById('bSumVol').textContent = Math.round(bProgram.reduce((s,e)=>s+e.sets*e.reps*e.w,0)).toLocaleString('ru-RU');
+}
+function bStepper(f, ex, step, min){
+  const d=document.createElement('div'); d.className='stepper';
+  d.innerHTML='<button type="button">−</button><input type="text" inputmode="decimal"><button type="button">+</button>';
+  const [mi,pl]=d.querySelectorAll('button'); const inp=d.querySelector('input');
+  const shw=()=>inp.value=fnum(ex[f]); shw();
+  const set=v=>{ex[f]=Math.max(min,v);shw();bSummary();};
+  mi.onclick=()=>set(ex[f]-step); pl.onclick=()=>set(ex[f]+step);
+  inp.onchange=()=>set(parseFloat(inp.value.replace(',','.'))||min);
+  return d;
+}
+function bRender(){
+  bList.innerHTML='';
+  bProgram.forEach((ex,i)=>{
+    const card=document.createElement('div'); card.className='ex';
+    const head=document.createElement('div'); head.className='ex-head';
+    head.innerHTML=`<span class="ex-num">${i+1}</span>`;
+    const name=document.createElement('input'); name.className='ex-name';
+    name.placeholder='Название упражнения'; name.value=ex.name;
+    name.onchange=()=>{ex.name=name.value;};
+    const del=document.createElement('button'); del.className='del';
+    del.innerHTML='<svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-9 0l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13"/></svg>';
+    del.onclick=()=>{bProgram.splice(i,1);bRender();};
+    head.append(name,del);
+    const params=document.createElement('div'); params.className='params';
+    [['Подходы','sets',1,1],['Повторы','reps',1,1],['Вес, кг','w',2.5,0]].forEach(([l,f,st,mn])=>{
+      const p=document.createElement('div'); p.className='param';
+      p.innerHTML=`<span class="label">${l}</span>`;
+      p.appendChild(bStepper(f,ex,st,mn));
+      params.appendChild(p);
+    });
+    card.append(head,params);
+    bList.appendChild(card);
+  });
+  bSummary();
+}
+const bChips=document.getElementById('bChips');
+bLibrary.forEach(n=>{
+  const c=document.createElement('button'); c.className='chip'; c.textContent=n;
+  c.onclick=()=>{bProgram.push({name:n,sets:3,reps:10,w:20});bRender();};
+  bChips.appendChild(c);
+});
+document.getElementById('bAddCustom').onclick=()=>{
+  bProgram.push({name:'',sets:3,reps:10,w:20}); bRender();
+  bList.lastElementChild?.querySelector('.ex-name')?.focus();
+};
+document.getElementById('bTpl').onclick=()=>toast('Шаблон <b>«День ног»</b> сохранён');
+document.getElementById('bSend').onclick=()=>toast('Программа отправлена · <b>Анна получит уведомление</b>');
+bRender();
+
+/* ───────── Дневник клиента ───────── */
+const dProgram = [
+  {name:'Приседания со штангой', meta:'4 × 8 · отдых 2 мин', last:'в прошлый раз 40 кг', sets:[{w:42.5},{w:42.5},{w:42.5},{w:40}]},
+  {name:'Румынская тяга', meta:'3 × 10 · отдых 90 сек', last:'в прошлый раз 35 кг', sets:[{w:37.5},{w:37.5},{w:35}]},
+  {name:'Выпады с гантелями', meta:'3 × 12 · отдых 90 сек', last:'в прошлый раз 10 кг', sets:[{w:12},{w:12},{w:10}]},
+  {name:'Планка', meta:'3 × 60 сек', last:'', sets:[{w:60},{w:60},{w:45}], unit:'сек'},
+];
+const dWrap=document.getElementById('dProgram');
+dProgram.forEach((ex,i)=>{
+  const card=document.createElement('div'); card.className='dx';
+  card.innerHTML=`
+    <div class="ex-head">
+      <span class="ex-num">${i+1}</span>
+      <input class="ex-name" value="${ex.name}">
+    </div>
+    <div class="dx-meta"><b>${ex.meta}</b>${ex.last?' · '+ex.last:''}</div>
+    <div class="dsets"></div>`;
+  const sets=card.querySelector('.dsets');
+  ex.sets.forEach((s,j)=>{
+    const row=document.createElement('div'); row.className='dset';
+    row.innerHTML=`
+      <span class="lbl">${j+1}-й</span>
+      <div class="w">
+        <button type="button" data-d="-1">−</button>
+        <input type="text" inputmode="decimal" value="${fnum(s.w)}">
+        <button type="button" data-d="1">+</button>
+        <small>${ex.unit||'кг'}</small>
+      </div>
+      <button type="button" class="chk"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg></button>`;
+    const inp=row.querySelector('input');
+    const step=ex.unit==='сек'?5:2.5;
+    row.querySelectorAll('.w button').forEach(b=>{
+      b.onclick=()=>{
+        const v=parseFloat(inp.value.replace(',','.'))||0;
+        inp.value=fnum(Math.max(0,v+step*+b.dataset.d));
+        toast('Сохранено · <b>тренер увидит</b>');
+      };
+    });
+    inp.addEventListener('change',()=>toast('Сохранено · <b>тренер увидит</b>'));
+    row.querySelector('.chk').onclick=e=>{
+      e.currentTarget.classList.toggle('on');
+      toast('Сохранено · <b>тренер увидит</b>');
+    };
+    sets.appendChild(row);
+  });
+  card.querySelector('.ex-name').addEventListener('change',()=>toast('Сохранено · <b>тренер увидит</b>'));
+  dWrap.appendChild(card);
+});
+
+/* ───────── Замеры ───────── */
+const months=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+const fdate=d=>`${d.getDate()} ${months[d.getMonth()]}`;
+let mEntries=[
+  {date:new Date(2026,3,9),  w:67.8, waist:74, chest:93,   hips:101,  thigh:59,   arm:27.5},
+  {date:new Date(2026,3,23), w:67.0, waist:73, chest:92.5, hips:100,  thigh:58.5, arm:27.5},
+  {date:new Date(2026,4,8),  w:66.1, waist:72, chest:92,   hips:99.5, thigh:58,   arm:27},
+  {date:new Date(2026,4,24), w:65.4, waist:71, chest:91.5, hips:99,   thigh:57.5, arm:27},
+  {date:new Date(2026,5,7),  w:64.9, waist:70, chest:91,   hips:98,   thigh:57,   arm:27},
+];
+const mLabels=[['waist','Талия'],['chest','Грудь'],['hips','Бёдра'],['thigh','Бедро'],['arm','Бицепс']];
+function mRender(){
+  const first=mEntries[0], last=mEntries[mEntries.length-1], prev=mEntries[mEntries.length-2]||first;
+  document.getElementById('mWNow').innerHTML=`${fnum(last.w)} <small>кг</small>`;
+  const sign=v=>(v>0?'+':'−')+fnum(Math.abs(v).toFixed(1))+' кг';
+  const dA=last.w-first.w, dL=last.w-prev.w;
+  const eA=document.getElementById('mDAll'), eL=document.getElementById('mDLast');
+  eA.textContent=sign(dA); eA.className='num '+(dA<=0?'good':'');
+  eL.textContent=sign(dL); eL.className='num '+(dL<=0?'good':'');
+  const svg=document.getElementById('mChart');
+  const ws=mEntries.map(e=>e.w);
+  const min=Math.min(...ws)-.4, max=Math.max(...ws)+.4;
+  const X=i=>8+i*(324/Math.max(mEntries.length-1,1));
+  const Y=w=>8+(1-(w-min)/(max-min))*72;
+  const pts=mEntries.map((e,i)=>`${X(i)},${Y(e.w)}`).join(' ');
+  svg.innerHTML=`
+    <polyline points="8,86 ${pts} ${X(mEntries.length-1)},86" fill="rgba(212,255,63,.07)" stroke="none"/>
+    <polyline points="${pts}" fill="none" stroke="#D4FF3F" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+    ${mEntries.map((e,i)=>`<circle cx="${X(i)}" cy="${Y(e.w)}" r="${i===mEntries.length-1?5:3.5}" fill="${i===mEntries.length-1?'#D4FF3F':'#0C0D0F'}" stroke="#D4FF3F" stroke-width="2"/>`).join('')}`;
+  document.getElementById('mDFirst').textContent=fdate(first.date);
+  document.getElementById('mDLastDate').textContent=fdate(last.date);
+  const grid=document.getElementById('mGrid'); grid.innerHTML='';
+  mLabels.forEach(([k,l])=>{
+    const d=last[k]-first[k];
+    const cls=d<0?'dn':d>0?'up':'sm';
+    const txt=d===0?'—':(d>0?'+':'−')+fnum(Math.abs(d).toFixed(1));
+    grid.innerHTML+=`<div class="m"><span>${l}</span><b class="num">${fnum(last[k])}<small> см</small><i class="${cls}">${txt}</i></b></div>`;
+  });
+  const hist=document.getElementById('mHistory'); hist.innerHTML='';
+  [...mEntries].reverse().forEach(e=>{
+    hist.innerHTML+=`<div class="h-entry">
+      <div class="h-top"><b class="num">${fnum(e.w)} <small>кг</small></b><time>${fdate(e.date)}</time></div>
+      <div class="h-m">талия ${fnum(e.waist)} · грудь ${fnum(e.chest)} · бёдра ${fnum(e.hips)} · бедро ${fnum(e.thigh)} · бицепс ${fnum(e.arm)}</div>
+    </div>`;
+  });
+}
+const mForm=document.getElementById('mForm');
+document.getElementById('mFormDate').textContent=fdate(new Date());
+document.getElementById('mAddBtn').onclick=()=>{
+  mForm.classList.toggle('open');
+  if(mForm.classList.contains('open')) document.getElementById('inW').focus();
+};
+document.getElementById('mSaveBtn').onclick=()=>{
+  const val=id=>parseFloat(document.getElementById(id).value.replace(',','.'));
+  const last=mEntries[mEntries.length-1];
+  mEntries.push({
+    date:new Date(),
+    w:val('inW')||last.w, waist:val('inWaist')||last.waist, chest:val('inChest')||last.chest,
+    hips:val('inHips')||last.hips, thigh:val('inThigh')||last.thigh, arm:val('inArm')||last.arm,
+  });
+  mForm.classList.remove('open');
+  ['inW','inWaist','inChest','inHips','inThigh','inArm'].forEach(id=>document.getElementById(id).value='');
+  mRender();
+  toast('Замер сохранён · <b>тренер увидит динамику</b>');
+};
+mRender();
+
+/* ───────── Старт ───────── */
+setRole('trainer');
+</script>
+</body>
+</html>
