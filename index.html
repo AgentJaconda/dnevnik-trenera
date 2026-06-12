@@ -145,6 +145,22 @@
     font-size:13px;font-weight:500;cursor:pointer;
   }
   .c-actions button.danger{color:var(--red);border-color:#3A2320}
+  .f select{
+    width:100%;border:none;background:none;color:var(--text);
+    font-family:'Golos Text';font-size:15px;padding:2px 0;
+  }
+  .f select:focus{outline:none}
+  .f select option{background:#1B1E23;color:#F2F3F5}
+  .f input.txt{font-family:'Golos Text';font-size:15px}
+  .pay-row{display:flex;gap:8px;margin-top:10px}
+  .pay-opt{
+    flex:1;border:1px solid var(--line);border-radius:11px;padding:11px 8px;
+    text-align:center;font-size:13px;color:var(--muted);cursor:pointer;
+    background:var(--surface-2);font-family:'Golos Text';font-weight:500;
+  }
+  .pay-opt.on{border-color:var(--volt);color:var(--volt)}
+  .pay-opt.dis{opacity:.4;pointer-events:none}
+  .slot.cancelled .who b{text-decoration:line-through;color:var(--faint)}
 
   /* ===== Финансы ===== */
   .fin-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
@@ -278,9 +294,9 @@
     <div class="money">
       <div>
         <div class="sum num"><span id="weekSum">61 500</span> <small>₽</small></div>
-        <div class="delta">+18% к прошлой неделе</div>
+        <div class="delta" id="weekDelta">+18% к прошлой неделе</div>
       </div>
-      <div class="spark" aria-hidden="true">
+      <div class="spark" id="weekSpark" aria-hidden="true">
         <i style="height:34%"></i><i style="height:55%"></i><i style="height:42%"></i>
         <i style="height:72%"></i><i style="height:48%"></i><i style="height:88%" class="hl"></i>
         <i style="height:24%"></i>
@@ -297,25 +313,50 @@
           <circle id="arc" cx="64" cy="64" r="52" fill="none" stroke="var(--volt)" stroke-width="6"
                   stroke-linecap="round" stroke-dasharray="326.7" stroke-dashoffset="326.7"/>
         </svg>
-        <div class="center"><b class="num">5<small>/8</small></b><span>слотов</span></div>
+        <div class="center"><b class="num" id="dialNum">5<small>/8</small></b><span>слотов</span></div>
       </div>
       <div class="day-info">
-        <p>Сегодня <b>5 тренировок</b>, ближайшая — <b>Анна К.</b> в 18:00. Свободны 12:00, 14:00 и 20:00.</p>
+        <p id="dayInfo">Сегодня <b>5 тренировок</b>, ближайшая — <b>Анна К.</b> в 18:00. Свободны 12:00, 14:00 и 20:00.</p>
       </div>
     </div>
   </div>
 
-  <div class="section-title"><h2>Сегодня</h2></div>
+  <div class="section-title"><h2>Сегодня</h2><a href="#" id="addSession" style="color:var(--volt)">+ Тренировка</a></div>
+
+  <div class="form" id="sForm">
+    <h3>Новая тренировка</h3>
+    <div class="f-grid">
+      <div class="f" style="grid-column:1/-1"><label>Клиент</label><select id="sClient"></select></div>
+      <div class="f"><label>Дата</label><input type="date" id="sDate" class="txt"></div>
+      <div class="f"><label>Время</label><input type="time" id="sTime" class="txt" value="18:00"></div>
+      <div class="f" style="grid-column:1/-1"><label>Вид (необязательно)</label><input id="sKind" class="txt" placeholder="Силовая"></div>
+    </div>
+    <div class="pay-row">
+      <div class="pay-opt on" id="payPass">Абонемент</div>
+      <div class="pay-opt" id="paySingle">Разовая</div>
+    </div>
+    <div class="f-grid" id="singleFields" style="display:none;margin-top:9px">
+      <div class="f"><label>Цена, ₽</label><input inputmode="numeric" id="sPrice" placeholder="3500"></div>
+      <div class="f" style="display:flex;align-items:center;gap:9px">
+        <input type="checkbox" id="sPaid" checked style="width:19px;height:19px;accent-color:#D4FF3F">
+        <label style="font-size:13px;color:var(--muted);letter-spacing:0;text-transform:none">уже оплачена</label>
+      </div>
+    </div>
+    <button class="save" id="sSave">Записать тренировку</button>
+  </div>
+
+  <div id="todayList">
   <div class="slot done"><time class="num">09:00</time><div class="who"><b>Михаил Орлов</b><span>Силовая · проведена</span></div><span class="tag ab">Абонемент 7/10</span></div>
   <div class="slot done"><time class="num">11:00</time><div class="who"><b>Светлана Юрьева</b><span>Функциональная · проведена</span></div><span class="tag pay">Разовая · 3 500 ₽</span></div>
   <div class="slot now"><time class="num">18:00</time><div class="who"><b>Анна Ковалёва</b><span>Персональная · подтверждена</span></div><span class="tag ab">Абонемент 3/10</span></div>
   <div class="slot"><time class="num">19:00</time><div class="who"><b>Игорь Стрельцов</b><span>Силовая</span></div><span class="tag debt">Не оплачено</span></div>
+  </div>
 
   <div class="section-title"><h2>Эта неделя</h2></div>
   <div class="stats">
-    <div class="stat"><b class="num">23</b><span>тренировки проведено</span></div>
-    <div class="stat"><b class="num">2</b><span>новых клиента</span></div>
-    <div class="stat"><b class="num">3</b><span>продления абонементов</span></div>
+    <div class="stat"><b class="num" id="stDone">23</b><span>тренировки проведено</span></div>
+    <div class="stat"><b class="num" id="stNew">2</b><span>новых клиента</span></div>
+    <div class="stat"><b class="num" id="stIncome">2 674</b><span>средний чек, ₽</span></div>
   </div>
 </section>
 
@@ -323,6 +364,15 @@
 <section class="screen" id="scr-clients">
   <input class="search" id="clientSearch" placeholder="Поиск клиента...">
   <div id="clientList"></div>
+  <div class="form" id="pForm" style="margin-top:14px">
+    <h3>Абонемент · <span id="pName"></span></h3>
+    <div class="f-grid">
+      <div class="f"><label>Тренировок</label><input inputmode="numeric" id="pTotal" value="10"></div>
+      <div class="f"><label>Цена, ₽</label><input inputmode="numeric" id="pPrice" placeholder="28000"></div>
+      <div class="f" style="grid-column:1/-1"><label>Срок, дней</label><input inputmode="numeric" id="pDays" value="60"></div>
+    </div>
+    <button class="save" id="pSave">Продать абонемент</button>
+  </div>
   <div class="form" id="cForm" style="margin-top:14px">
     <h3>Новый клиент</h3>
     <div class="f-grid">
@@ -363,19 +413,21 @@
 <!-- ════════ ТРЕНЕР: Финансы ════════ -->
 <section class="screen" id="scr-finance">
   <div class="fin-grid">
-    <div class="fin"><b class="num">247 500 <small>₽</small></b><span>доход за июнь</span></div>
-    <div class="fin"><b class="num">+12%</b><span>к маю</span></div>
-    <div class="fin"><b class="num">9</b><span>абонементов продано</span></div>
-    <div class="fin"><b class="num">14</b><span>разовых тренировок</span></div>
+    <div class="fin"><b class="num" id="finIncome">247 500 <small>₽</small></b><span id="finMonth">доход за июнь</span></div>
+    <div class="fin"><b class="num" id="finDone">23</b><span>тренировок проведено</span></div>
+    <div class="fin"><b class="num" id="finPasses">9</b><span>абонементов продано</span></div>
+    <div class="fin"><b class="num" id="finSingles">14</b><span>разовых тренировок</span></div>
   </div>
   <div class="card">
     <div class="label" style="margin-bottom:8px">Последние поступления</div>
+    <div id="finList">
     <div class="fin-row"><span>Анна К. · абонемент 10</span><b class="num">28 000 ₽</b></div>
     <div class="fin-row"><span>Светлана Ю. · разовая</span><b class="num">3 500 ₽</b></div>
     <div class="fin-row"><span>Михаил О. · абонемент 10</span><b class="num">28 000 ₽</b></div>
     <div class="fin-row"><span>Павел Д. · разовая</span><b class="num">3 500 ₽</b></div>
+    </div>
   </div>
-  <p class="hint" style="text-align:center">Долги клиентов и детальная аналитика появятся после подключения базы</p>
+  <p class="hint" style="text-align:center" id="finHint">Долги клиентов и детальная аналитика появятся после подключения базы</p>
 </section>
 
 <!-- ════════ КЛИЕНТ: Дневник ════════ -->
@@ -496,17 +548,40 @@ async function api(action, payload = {}){
   return data;
 }
 
+let state = { today: [], week: { income: 0, done: 0 } };
+
+function dayBounds(){
+  const d = new Date(); d.setHours(0,0,0,0);
+  return {
+    today_from: d.toISOString(),
+    today_to: new Date(d.getTime() + 864e5).toISOString(),
+    week_from: new Date(Date.now() - 7*864e5).toISOString(),
+  };
+}
+
+async function refreshState(){
+  const res = await api('state', dayBounds());
+  myClients = res.clients || [];
+  state.today = res.today || [];
+  state.week = res.week || { income: 0, done: 0 };
+  renderClients(curFilter);
+  renderToday();
+}
+
 async function boot(){
   if (!tg?.initData && !DEV) return;   // вне Telegram и без тест-режима — демо
   try {
-    const res = await api('bootstrap');
+    const res = await api('bootstrap', dayBounds());
     if (res.role === 'trainer'){
       real = true;
       me = res.trainer;
       myClients = res.clients || [];
+      state.today = res.today || [];
+      state.week = res.week || { income: 0, done: 0 };
       userName = me.name || userName;
       if (role === 'trainer') setRole('trainer');
       renderClients();
+      renderToday();
       const trial = me.trial_ends_at ? new Date(me.trial_ends_at) : null;
       document.getElementById('subtitle').textContent =
         trial ? `триал до ${trial.getDate()}.${String(trial.getMonth()+1).padStart(2,'0')}` : 'Дневник тренера';
@@ -537,6 +612,7 @@ function show(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on', s.id===id));
   nav.querySelectorAll('button').forEach(b=>b.classList.toggle('on', b.dataset.id===id));
   window.scrollTo({top:0});
+  if (id === 'scr-finance' && typeof loadFinance === 'function') loadFinance();
 }
 function renderNav(){
   nav.innerHTML = '';
@@ -598,10 +674,17 @@ function clientRow(c, archived){
   const el = document.createElement('div');
   el.className = 'client';
   if (archived) el.style.opacity = .6;
+  let tagCls = 'pay', tagTxt = 'без абонемента', sub = c.phone || 'приглашение не отправлено';
+  if (archived){ tagCls = 'pay'; tagTxt = 'архив'; sub = 'в архиве'; }
+  else if (c.pass){
+    if (c.pass.left <= 2){ tagCls = 'debt'; tagTxt = `заканчивается · ${c.pass.left}`; }
+    else { tagCls = 'ab'; tagTxt = `абонемент ${c.pass.left}/${c.pass.total}`; }
+    if (c.pass.valid_until) sub = `действует до ${new Date(c.pass.valid_until).toLocaleDateString('ru-RU')}`;
+  }
   el.innerHTML = `
     <div class="c-ava">${(c.name[0]||'?').toUpperCase()}</div>
-    <div class="who"><b>${c.name}</b><span>${archived ? 'в архиве' : (c.phone || 'приглашение не отправлено')}</span></div>
-    <span class="tag ${archived ? 'pay' : 'ab'}">${archived ? 'архив' : 'активен'}</span>`;
+    <div class="who"><b>${c.name}</b><span>${sub}</span></div>
+    <span class="tag ${tagCls}">${tagTxt}</span>`;
   const actions = document.createElement('div');
   actions.className = 'c-actions';
   const mkBtn = (label, cls, fn) => {
@@ -611,6 +694,12 @@ function clientRow(c, archived){
     actions.appendChild(b);
   };
   if (!archived){
+    mkBtn('Абонемент', '', () => {
+      pFormClient = c;
+      document.getElementById('pName').textContent = c.name;
+      pForm.classList.add('open');
+      pForm.scrollIntoView({behavior:'smooth', block:'center'});
+    });
     mkBtn('В архив', '', async () => {
       try {
         await api('client_set_status', { client_id: c.id, status: 'archived' });
@@ -687,6 +776,179 @@ function renderClients(filter=''){
 }
 renderClients();
 document.getElementById('clientSearch').oninput = e=>renderClients(e.target.value);
+
+/* ───────── Продажа абонемента ───────── */
+const pForm = document.getElementById('pForm');
+let pFormClient = null;
+document.getElementById('pSave').onclick = async ()=>{
+  if (!pFormClient) return;
+  const total = parseInt(document.getElementById('pTotal').value) || 0;
+  const price = parseInt(document.getElementById('pPrice').value) || 0;
+  const days  = parseInt(document.getElementById('pDays').value) || 0;
+  if (total < 1){ toast('Укажите число тренировок'); return; }
+  const valid_until = days ? new Date(Date.now() + days*864e5).toISOString().slice(0,10) : null;
+  try {
+    await api('pass_add', { client_id: pFormClient.id, total_sessions: total, price, valid_until });
+    pForm.classList.remove('open');
+    toast(`Абонемент на <b>${total}</b> продан · +${price.toLocaleString('ru-RU')} ₽`);
+    await refreshState();
+  } catch(e){ toast('Ошибка — попробуйте ещё раз'); console.error(e); }
+};
+
+/* ───────── Сегодня: живой список ───────── */
+const STATUS_LABEL = { planned:'запланирована', done:'проведена', cancelled:'отменена', no_show:'неявка' };
+function sessionRow(s){
+  const wrap = document.createElement('div');
+  const el = document.createElement('div');
+  el.className = 'slot';
+  if (s.status === 'done') el.classList.add('done');
+  if (s.status === 'cancelled' || s.status === 'no_show') el.classList.add('done','cancelled');
+  const t = new Date(s.starts_at);
+  const hhmm = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+  let tag = '<span class="tag pay">—</span>';
+  if (s.pass_id) tag = '<span class="tag ab">Абонемент</span>';
+  else if (s.paid) tag = `<span class="tag pay">Разовая · ${Number(s.price||0).toLocaleString('ru-RU')} ₽</span>`;
+  else tag = '<span class="tag debt">Не оплачено</span>';
+  el.innerHTML = `
+    <time class="num">${hhmm}</time>
+    <div class="who"><b>${s.client_name}</b><span>${s.kind ? s.kind+' · ' : ''}${STATUS_LABEL[s.status]||s.status}</span></div>
+    ${tag}`;
+  const actions = document.createElement('div');
+  actions.className = 'c-actions';
+  const act = (label, cls, fn) => {
+    const b = document.createElement('button');
+    b.textContent = label; if (cls) b.className = cls;
+    b.onclick = async e => {
+      e.stopPropagation();
+      try { await fn(); await refreshState(); }
+      catch(err){ toast(err.message || 'Ошибка'); console.error(err); }
+    };
+    actions.appendChild(b);
+  };
+  if (s.status === 'planned'){
+    act('Проведена ✓', '', async ()=>{ await api('session_set_status',{session_id:s.id,status:'done'}); toast('Тренировка проведена' + (s.pass_id ? ' · <b>списано с абонемента</b>' : '')); });
+    if (!s.pass_id && !s.paid) act('Оплачено', '', async ()=>{ await api('session_set_paid',{session_id:s.id,paid:true}); toast('Отмечено оплаченным'); });
+    act('Неявка', 'danger', async ()=>{ await api('session_set_status',{session_id:s.id,status:'no_show'}); toast('Отмечена неявка'); });
+    act('Отменить', 'danger', async ()=>{ await api('session_set_status',{session_id:s.id,status:'cancelled'}); toast('Тренировка отменена'); });
+  } else {
+    act('Вернуть в план', '', async ()=>{ await api('session_set_status',{session_id:s.id,status:'planned'}); toast('Возвращена в план'); });
+    if (!s.pass_id && !s.paid && s.status === 'done') act('Оплачено', '', async ()=>{ await api('session_set_paid',{session_id:s.id,paid:true}); toast('Отмечено оплаченным'); });
+  }
+  el.onclick = () => {
+    const wasOpen = actions.classList.contains('open');
+    document.querySelectorAll('.c-actions').forEach(a => a.classList.remove('open'));
+    if (!wasOpen) actions.classList.add('open');
+  };
+  wrap.append(el, actions);
+  return wrap;
+}
+
+function renderToday(){
+  if (!real) return;
+  // Деньги недели
+  document.getElementById('weekSum').textContent = state.week.income.toLocaleString('ru-RU');
+  document.getElementById('weekDelta').style.display = 'none';
+  document.getElementById('weekSpark').style.display = 'none';
+  // Статистика недели
+  document.getElementById('stDone').textContent = state.week.done;
+  const wkAgo = Date.now() - 7*864e5;
+  document.getElementById('stNew').textContent =
+    myClients.filter(c => new Date(c.created_at).getTime() > wkAgo).length;
+  document.getElementById('stIncome').textContent =
+    state.week.done ? Math.round(state.week.income / state.week.done).toLocaleString('ru-RU') : '—';
+  // Циферблат: занято слотов из 8
+  const totalToday = state.today.filter(s => s.status !== 'cancelled').length;
+  document.getElementById('dialNum').innerHTML = `${totalToday}<small>/8</small>`;
+  const arc = document.getElementById('arc');
+  arc.style.transition = 'stroke-dashoffset .8s cubic-bezier(.3,.8,.3,1)';
+  arc.style.strokeDashoffset = 326.7 * (1 - Math.min(totalToday/8, 1));
+  // Подпись дня
+  const next = state.today.find(s => s.status === 'planned' && new Date(s.starts_at) > new Date());
+  document.getElementById('dayInfo').innerHTML = totalToday
+    ? `Сегодня <b>${totalToday} ${totalToday===1?'тренировка':totalToday<5?'тренировки':'тренировок'}</b>${next ? `, ближайшая — <b>${next.client_name}</b> в ${new Date(next.starts_at).toTimeString().slice(0,5)}` : ''}.`
+    : 'Сегодня тренировок нет — день свободен.';
+  // Список
+  const wrap = document.getElementById('todayList');
+  wrap.innerHTML = '';
+  if (!state.today.length){
+    wrap.innerHTML = '<p class="hint" style="text-align:center;margin:16px 0">Пока пусто — добавьте первую тренировку</p>';
+  }
+  state.today.forEach(s => wrap.appendChild(sessionRow(s)));
+}
+
+/* ───────── Форма новой тренировки ───────── */
+const sForm = document.getElementById('sForm');
+let payMode = 'pass';
+document.getElementById('addSession').onclick = e => {
+  e.preventDefault();
+  if (!real){ toast('Запись тренировок — <b>после подключения базы</b>'); return; }
+  const active = myClients.filter(c => c.status !== 'archived');
+  if (!active.length){ toast('Сначала добавьте клиента'); return; }
+  const sel = document.getElementById('sClient');
+  sel.innerHTML = active.map(c =>
+    `<option value="${c.id}">${c.name}${c.pass ? ` (абонемент ${c.pass.left}/${c.pass.total})` : ''}</option>`).join('');
+  document.getElementById('sDate').value = new Date().toLocaleDateString('sv');
+  sForm.classList.toggle('open');
+  syncPayOptions();
+};
+function syncPayOptions(){
+  const c = myClients.find(x => x.id === document.getElementById('sClient').value);
+  const passBtn = document.getElementById('payPass');
+  if (c && c.pass){ passBtn.classList.remove('dis'); setPay('pass'); }
+  else { passBtn.classList.add('dis'); setPay('single'); }
+}
+document.getElementById('sClient').onchange = syncPayOptions;
+function setPay(mode){
+  payMode = mode;
+  document.getElementById('payPass').classList.toggle('on', mode==='pass');
+  document.getElementById('paySingle').classList.toggle('on', mode==='single');
+  document.getElementById('singleFields').style.display = mode==='single' ? 'grid' : 'none';
+}
+document.getElementById('payPass').onclick = ()=>setPay('pass');
+document.getElementById('paySingle').onclick = ()=>setPay('single');
+document.getElementById('sSave').onclick = async ()=>{
+  const client_id = document.getElementById('sClient').value;
+  const date = document.getElementById('sDate').value;
+  const time = document.getElementById('sTime').value;
+  if (!client_id || !date || !time){ toast('Заполните дату и время'); return; }
+  const starts_at = new Date(`${date}T${time}`).toISOString();
+  try {
+    await api('session_add', {
+      client_id, starts_at,
+      kind: document.getElementById('sKind').value.trim() || null,
+      source: payMode,
+      price: parseInt(document.getElementById('sPrice').value) || 0,
+      paid: document.getElementById('sPaid').checked,
+    });
+    sForm.classList.remove('open');
+    toast('Тренировка записана');
+    await refreshState();
+  } catch(e){ toast(e.message || 'Ошибка'); console.error(e); }
+};
+
+/* ───────── Финансы: живые данные ───────── */
+let finLoaded = false;
+async function loadFinance(){
+  if (!real) return;
+  try {
+    const now = new Date();
+    const from = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const to = new Date(now.getFullYear(), now.getMonth()+1, 1).toISOString();
+    const f = await api('finance', { from, to });
+    document.getElementById('finIncome').innerHTML = `${f.income.toLocaleString('ru-RU')} <small>₽</small>`;
+    const MONTHS = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+    document.getElementById('finMonth').textContent = `доход за ${MONTHS[now.getMonth()]}`;
+    document.getElementById('finDone').textContent = f.done;
+    document.getElementById('finPasses').textContent = f.passes_sold;
+    document.getElementById('finSingles').textContent = f.singles;
+    const list = document.getElementById('finList');
+    list.innerHTML = f.items.length
+      ? f.items.map(i => `<div class="fin-row"><span>${i.label}</span><b class="num">${i.sum.toLocaleString('ru-RU')} ₽</b></div>`).join('')
+      : '<p class="hint" style="margin:8px 0">Поступлений в этом месяце пока нет</p>';
+    document.getElementById('finHint').style.display = 'none';
+    finLoaded = true;
+  } catch(e){ console.error(e); }
+}
 const cForm = document.getElementById('cForm');
 document.getElementById('addClient').onclick = ()=>{
   if (!real){ toast('Добавление клиентов — <b>после подключения базы</b>'); return; }
