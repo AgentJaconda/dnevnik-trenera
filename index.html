@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
 <title>Дневник тренера</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -23,6 +23,20 @@
     padding:max(14px,env(safe-area-inset-top)) 18px 96px;overflow-x:hidden;
   }
   body::before{content:'';position:fixed;inset:0;z-index:-1;background:var(--bg)}
+  /* iOS не зумит инпуты со шрифтом >=16px */
+  input,select,textarea{font-size:16px}
+  .switch{position:relative;display:inline-block;width:48px;height:28px;flex:none}
+  .switch input{opacity:0;width:0;height:0}
+  .switch .slider{
+    position:absolute;cursor:pointer;inset:0;background:var(--surface-2);
+    border:1px solid var(--line);border-radius:28px;transition:.2s;
+  }
+  .switch .slider:before{
+    content:'';position:absolute;height:20px;width:20px;left:3px;bottom:3px;
+    background:var(--muted);border-radius:50%;transition:.2s;
+  }
+  .switch input:checked + .slider{background:#1A1D12;border-color:var(--volt)}
+  .switch input:checked + .slider:before{transform:translateX(20px);background:var(--volt)}
   .num{font-family:'Oswald',sans-serif;font-variant-numeric:tabular-nums}
   .label{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);font-weight:500}
   .card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:12px}
@@ -424,6 +438,7 @@
     <label>Клиент</label><select id="bClient"></select>
   </div>
   <div class="week-strip" id="bWeek" style="display:none"></div>
+  <div id="bDaySession" style="display:none;margin:0 0 12px"></div>
   <div class="chips" id="bGroupChips" style="display:none;margin:0 0 12px"></div>
   <div class="summary">
     <div><b class="num" id="bSumEx">0</b><span>упражнений</span></div>
@@ -464,33 +479,48 @@
     </div>
   </div>
   <p class="hint" style="text-align:center" id="finHint">Долги клиентов и детальная аналитика появятся после подключения базы</p>
+
+  <div class="card" id="settingsCard" style="display:none;margin-top:18px">
+    <div class="label" style="margin-bottom:12px">Настройки</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <div>
+        <div style="font-size:14.5px;font-weight:500">Напоминания</div>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:2px">За час до тренировки и «как прошла»</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="notifyToggle" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
 </section>
 
 <!-- ════════ КЛИЕНТ: Дневник ════════ -->
 <section class="screen" id="scr-diary">
-  <div class="card">
+  <div class="card" id="cdPassCard">
     <div class="label">Мой абонемент</div>
     <div class="pass">
-      <div class="pass-info"><b class="num">7<small>/10</small></b><span>осталось</span></div>
-      <div class="pass-dots"><i class="used"></i><i class="used"></i><i class="used"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="pass-info"><b class="num" id="cdPassLeft">7<small>/10</small></b><span>осталось</span></div>
+      <div class="pass-dots" id="cdPassDots"></div>
     </div>
-    <div class="pass-note">Действует до <b>10 июля</b> · продление — у тренера в один клик</div>
+    <div class="pass-note" id="cdPassNote">Действует до <b>10 июля</b> · продление — у тренера в один клик</div>
   </div>
-  <div class="card">
+  <div class="card" id="cdKbjuCard">
     <div class="label" style="margin-bottom:10px">Цели на день от тренера</div>
-    <div class="kbju">
+    <div class="kbju" id="cdKbju">
       <div><b class="num">1850</b><span>ккал</span></div>
       <div><b class="num">130</b><span>белки</span></div>
       <div><b class="num">60</b><span>жиры</span></div>
       <div><b class="num">180</b><span>углеводы</span></div>
     </div>
   </div>
-  <div class="coach-note">
+  <div class="coach-note" id="cdNote">
     <span class="label">Комментарий тренера</span>
-    Сегодня день ног. В приседе пробуем 42,5 кг — в прошлый раз 40 шли уверенно. Колени держим над стопой.
+    <span id="cdNoteText">Сегодня день ног. В приседе пробуем 42,5 кг — в прошлый раз 40 шли уверенно.</span>
   </div>
-  <div class="section-title"><h2>Программа на сегодня</h2><span>от Дмитрия</span></div>
-  <p class="hint">Названия и веса можно править — тренер увидит изменения</p>
+  <div class="week-strip" id="cdWeek" style="display:none"></div>
+  <div class="section-title"><h2 id="cdProgTitle">Программа на сегодня</h2><span id="cdProgFrom">от тренера</span></div>
+  <p class="hint" id="cdProgHint">Названия и веса можно править — тренер увидит изменения</p>
   <div id="dProgram"></div>
 </section>
 
@@ -533,6 +563,22 @@
 </section>
 
 <div class="toast" id="toast"></div>
+
+<!-- Модалка переноса тренировки -->
+<div id="reschedOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:30;align-items:center;justify-content:center;padding:20px">
+  <div style="background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px;width:100%;max-width:360px">
+    <h3 style="font-size:16px;font-weight:600;margin-bottom:4px">Перенести тренировку</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:14px" id="reschedWho"></p>
+    <div class="f-grid">
+      <div class="f"><label>Дата</label><input type="date" id="reschedDate" class="txt"></div>
+      <div class="f"><label>Время</label><input type="time" id="reschedTime" class="txt"></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:14px">
+      <button id="reschedCancel" style="flex:1;padding:13px;border-radius:11px;border:1px solid var(--line);background:var(--surface-2);color:var(--muted);font-family:'Golos Text';font-size:15px;cursor:pointer">Отмена</button>
+      <button id="reschedSave" class="save" style="flex:1;margin:0">Перенести</button>
+    </div>
+  </div>
+</div>
 
 <nav id="nav"></nav>
 
@@ -605,10 +651,12 @@ async function refreshState(){
   if (typeof bFillClients === 'function') bFillClients();
 }
 
+let clientData = null;       // данные клиента (если вошёл клиент)
+
 async function boot(){
   if (!tg?.initData && !DEV) return;   // вне Telegram и без тест-режима — демо
   try {
-    const res = await api('bootstrap', dayBounds());
+    const res = await api('bootstrap', { ...dayBounds(), ...clientDayBounds() });
     if (res.role === 'trainer'){
       real = true;
       me = res.trainer;
@@ -616,14 +664,36 @@ async function boot(){
       state.today = res.today || [];
       state.week = res.week || { income: 0, done: 0 };
       userName = me.name || userName;
-      if (role === 'trainer') setRole('trainer');
+      // прячем демо-переключатель ролей — тренер видит только своё
+      document.querySelector('.role-pill').style.display = 'none';
+      setRole('trainer');
       renderClients();
       renderToday();
       if (typeof bSetupReal === 'function') bSetupReal();
+      // Настройки: тумблер напоминаний
+      const sc = document.getElementById('settingsCard');
+      if (sc){
+        sc.style.display = '';
+        const tgl = document.getElementById('notifyToggle');
+        tgl.checked = me.notify?.reminders !== false;
+        tgl.onchange = async ()=>{
+          try {
+            await api('trainer_set_notify', { reminders: tgl.checked });
+            toast(tgl.checked ? 'Напоминания включены' : 'Напоминания выключены');
+          } catch(e){ tgl.checked = !tgl.checked; toast('Ошибка'); }
+        };
+      }
       const trial = me.trial_ends_at ? new Date(me.trial_ends_at) : null;
       document.getElementById('subtitle').textContent =
         trial ? `триал до ${trial.getDate()}.${String(trial.getMonth()+1).padStart(2,'0')}` : 'Дневник тренера';
       toast('База подключена · <b>данные настоящие</b>');
+    } else if (res.role === 'client'){
+      real = true;
+      clientData = res;
+      // прячем переключатель — клиент видит только свой дневник
+      document.querySelector('.role-pill').style.display = 'none';
+      setRole('client');
+      renderClientReal();
     }
   } catch(e){
     console.error('boot:', e);
@@ -765,13 +835,16 @@ function clientRow(c, archived){
     });
   }
   mkBtn('Удалить навсегда', 'danger', () => {
-    askConfirm(`Удалить «${c.name}» навсегда? История пропадёт безвозвратно.`, async () => {
-      try {
-        await api('client_delete', { client_id: c.id });
-        myClients = myClients.filter(x => x.id !== c.id);
-        renderClients(curFilter);
-        toast('Удалено');
-      } catch(e){ toast('Ошибка — попробуйте ещё раз'); }
+    askConfirm(`Удалить «${c.name}»? Все тренировки, абонементы и замеры пропадут безвозвратно.`, () => {
+      // второе подтверждение — защита от случайного тапа
+      askConfirm(`Точно удалить «${c.name}»? Отменить будет нельзя.`, async () => {
+        try {
+          await api('client_delete', { client_id: c.id });
+          myClients = myClients.filter(x => x.id !== c.id);
+          renderClients(curFilter);
+          toast('Удалено');
+        } catch(e){ toast('Ошибка — попробуйте ещё раз'); }
+      });
     });
   });
   el.onclick = () => {
@@ -891,10 +964,12 @@ function sessionRow(s){
   if (s.status === 'planned'){
     act('Проведена ✓', '', async ()=>{ await api('session_set_status',{session_id:s.id,status:'done'}); toast('Тренировка проведена' + (s.pass_id ? ' · <b>списано с абонемента</b>' : '')); });
     if (!s.pass_id && !s.paid) act('Оплачено', '', async ()=>{ await api('session_set_paid',{session_id:s.id,paid:true}); toast('Отмечено оплаченным'); });
+    act('Перенести', '', ()=>openReschedule(s));
     act('Неявка', 'danger', async ()=>{ await api('session_set_status',{session_id:s.id,status:'no_show'}); toast('Отмечена неявка'); });
     act('Отменить', 'danger', async ()=>{ await api('session_set_status',{session_id:s.id,status:'cancelled'}); toast('Тренировка отменена'); });
   } else {
     act('Вернуть в план', '', async ()=>{ await api('session_set_status',{session_id:s.id,status:'planned'}); toast('Возвращена в план'); });
+    act('Перенести', '', ()=>openReschedule(s));
     if (!s.pass_id && !s.paid && s.status === 'done') act('Оплачено', '', async ()=>{ await api('session_set_paid',{session_id:s.id,paid:true}); toast('Отмечено оплаченным'); });
   }
   el.onclick = () => {
@@ -905,6 +980,33 @@ function sessionRow(s){
   wrap.append(el, actions);
   return wrap;
 }
+
+let reschedSession = null;
+function openReschedule(s){
+  reschedSession = s;
+  const d = new Date(s.starts_at);
+  document.getElementById('reschedWho').textContent =
+    `${s.client_name} · сейчас ${d.toLocaleDateString('ru-RU')} ${d.toTimeString().slice(0,5)}`;
+  document.getElementById('reschedDate').value = d.toLocaleDateString('sv');
+  document.getElementById('reschedTime').value = d.toTimeString().slice(0,5);
+  document.getElementById('reschedOverlay').style.display = 'flex';
+}
+document.getElementById('reschedCancel').onclick = ()=>{
+  document.getElementById('reschedOverlay').style.display = 'none';
+};
+document.getElementById('reschedSave').onclick = async ()=>{
+  if (!reschedSession) return;
+  const date = document.getElementById('reschedDate').value;
+  const time = document.getElementById('reschedTime').value;
+  if (!date || !time){ toast('Укажите дату и время'); return; }
+  const starts_at = new Date(`${date}T${time}`).toISOString();
+  try {
+    await api('session_reschedule', { session_id: reschedSession.id, starts_at });
+    document.getElementById('reschedOverlay').style.display = 'none';
+    toast('Тренировка перенесена');
+    await refreshState();
+  } catch(e){ toast(e.message || 'Ошибка'); console.error(e); }
+};
 
 function renderToday(){
   if (!real) return;
@@ -969,25 +1071,32 @@ function setPay(mode){
 }
 document.getElementById('payPass').onclick = ()=>setPay('pass');
 document.getElementById('paySingle').onclick = ()=>setPay('single');
-document.getElementById('sSave').onclick = async ()=>{
+async function doSessionAdd(force){
   const client_id = document.getElementById('sClient').value;
   const date = document.getElementById('sDate').value;
   const time = document.getElementById('sTime').value;
   if (!client_id || !date || !time){ toast('Заполните дату и время'); return; }
   const starts_at = new Date(`${date}T${time}`).toISOString();
   try {
-    await api('session_add', {
-      client_id, starts_at,
+    const res = await api('session_add', {
+      client_id, starts_at, force,
       kind: document.getElementById('sKind').value.trim() || null,
       source: payMode,
       price: parseInt(document.getElementById('sPrice').value) || 0,
       paid: document.getElementById('sPaid').checked,
     });
+    if (res.conflict){
+      const t = new Date(res.at).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+      askConfirm(`На ${t} уже стоит тренировка с ${res.with_name}. Записать всё равно?`,
+        ()=>doSessionAdd(true));
+      return;
+    }
     sForm.classList.remove('open');
     toast('Тренировка записана');
     await refreshState();
   } catch(e){ toast(e.message || 'Ошибка'); console.error(e); }
-};
+}
+document.getElementById('sSave').onclick = ()=>doSessionAdd(false);
 
 /* ───────── Финансы: живые данные ───────── */
 let finLoaded = false;
@@ -1097,13 +1206,6 @@ function bExCard(ex){
   return card;
 }
 function bGroupTools(g){
-  const box=document.createElement('div');
-  const chips=document.createElement('div'); chips.className='chips'; chips.style.margin='0 0 9px';
-  bLibrary.forEach(n=>{
-    const c=document.createElement('button'); c.className='chip'; c.textContent=n;
-    c.onclick=()=>{ bProgram.push({name:n,sets:3,reps:10,w:20,group:g}); bRender(); };
-    chips.appendChild(c);
-  });
   const add=document.createElement('button');
   add.className='add-custom'; add.style.marginTop='0'; add.textContent='+ упражнение';
   add.onclick=()=>{
@@ -1111,8 +1213,7 @@ function bGroupTools(g){
     bProgram.push(ex); bRender();
     [...bList.querySelectorAll('.ex-name')].pop()?.focus();
   };
-  box.append(chips, add);
-  return box;
+  return add;
 }
 function bRender(){
   bList.innerHTML='';
@@ -1264,7 +1365,33 @@ async function bLoad(){
       group: e.muscle_group || '',
     }));
     bRender(); bHead();
+    bRenderDaySession(cid);
   } catch(e){ console.error(e); }
+}
+function bRenderDaySession(cid){
+  const box = document.getElementById('bDaySession');
+  box.style.display = 'block';
+  box.innerHTML = '';
+  const btn = document.createElement('button');
+  btn.className = 'add-custom';
+  btn.style.margin = '0';
+  const isToday = iso(bDate) === iso(new Date());
+  btn.textContent = isToday ? '+ Поставить тренировку на сегодня'
+    : `+ Поставить тренировку на ${bDate.toLocaleDateString('ru-RU',{day:'numeric',month:'long'})}`;
+  btn.onclick = ()=>{
+    // открываем форму записи тренировки на «Сегодня» с этой датой и клиентом
+    show('scr-today');
+    const active = myClients.filter(c => c.status !== 'archived');
+    const sel = document.getElementById('sClient');
+    sel.innerHTML = active.map(c =>
+      `<option value="${c.id}">${c.name}${c.pass ? ` (абонемент ${c.pass.left}/${c.pass.total})` : ''}</option>`).join('');
+    sel.value = cid;
+    document.getElementById('sDate').value = iso(bDate);
+    sForm.classList.add('open');
+    syncPayOptions();
+    sForm.scrollIntoView({behavior:'smooth', block:'center'});
+  };
+  box.appendChild(btn);
 }
 document.getElementById('bSend').onclick = async ()=>{
   if (!real){ toast('Программа отправлена · <b>Анна получит уведомление</b>'); return; }
@@ -1292,54 +1419,203 @@ document.getElementById('bSend').onclick = async ()=>{
   } catch(e){ toast(e.message || 'Ошибка'); console.error(e); }
 };
 
-/* ───────── Дневник клиента ───────── */
-const dProgram = [
-  {name:'Приседания со штангой', meta:'4 × 8 · отдых 2 мин', last:'в прошлый раз 40 кг', sets:[{w:42.5},{w:42.5},{w:42.5},{w:40}]},
-  {name:'Румынская тяга', meta:'3 × 10 · отдых 90 сек', last:'в прошлый раз 35 кг', sets:[{w:37.5},{w:37.5},{w:35}]},
-  {name:'Выпады с гантелями', meta:'3 × 12 · отдых 90 сек', last:'в прошлый раз 10 кг', sets:[{w:12},{w:12},{w:10}]},
-  {name:'Планка', meta:'3 × 60 сек', last:'', sets:[{w:60},{w:60},{w:45}], unit:'сек'},
-];
-const dWrap=document.getElementById('dProgram');
-dProgram.forEach((ex,i)=>{
+/* ───────── Дневник клиента (живой) ───────── */
+const dWrap = document.getElementById('dProgram');
+let cdDate = new Date(); cdDate.setHours(0,0,0,0);
+
+function clientDayBounds(){
+  const start = new Date(); start.setHours(0,0,0,0); start.setDate(start.getDate()-7);
+  return { days_from: start.toLocaleDateString('sv'),
+           days_to: new Date(start.getTime()+21*864e5).toLocaleDateString('sv') };
+}
+
+async function renderClientReal(){
+  if (!clientData) return;
+  const c = clientData.client || {};
+  // Шапка
+  document.getElementById('greeting').textContent = `Привет, ${c.name || ''}`.trim();
+  document.getElementById('subtitle').textContent =
+    `Тренер — ${clientData.trainer_name || 'тренер'}`;
+
+  // Абонемент
+  const pass = clientData.pass;
+  const passCard = document.getElementById('cdPassCard');
+  if (pass){
+    passCard.style.display = '';
+    document.getElementById('cdPassLeft').innerHTML = `${pass.left}<small>/${pass.total}</small>`;
+    const dots = document.getElementById('cdPassDots');
+    dots.innerHTML = '';
+    for (let i=0;i<pass.total;i++){
+      const d=document.createElement('i'); if (i<pass.used) d.className='used'; dots.appendChild(d);
+    }
+    document.getElementById('cdPassNote').innerHTML = pass.valid_until
+      ? `Действует до <b>${new Date(pass.valid_until).toLocaleDateString('ru-RU')}</b> · продление у тренера`
+      : 'Бессрочный абонемент';
+  } else {
+    passCard.style.display = 'none';
+  }
+
+  // КБЖУ (если тренер задал)
+  const kCard = document.getElementById('cdKbjuCard');
+  const k = c.kbju;
+  if (k && (k.kcal||k.protein||k.fat||k.carbs)){
+    kCard.style.display = '';
+    document.getElementById('cdKbju').innerHTML = `
+      <div><b class="num">${k.kcal??'—'}</b><span>ккал</span></div>
+      <div><b class="num">${k.protein??'—'}</b><span>белки</span></div>
+      <div><b class="num">${k.fat??'—'}</b><span>жиры</span></div>
+      <div><b class="num">${k.carbs??'—'}</b><span>углеводы</span></div>`;
+  } else {
+    kCard.style.display = 'none';
+  }
+
+  // Календарь клиента
+  cdRenderWeek();
+  // Программа на выбранный день
+  cdRenderProgram(clientData.program, clientData.exercises);
+  // Замеры
+  if (typeof mRenderClient === 'function') mRenderClient();
+}
+
+function cdRenderWeek(){
+  const wrap = document.getElementById('cdWeek');
+  const start = new Date(); start.setHours(0,0,0,0); start.setDate(start.getDate()-7);
+  const days = {};
+  (clientData.days||[]).forEach(d=>{ days[d.for_date]=d.groups||[]; });
+  wrap.style.display = 'flex';
+  wrap.innerHTML='';
+  const DOW=['вс','пн','вт','ср','чт','пт','сб'];
+  let selEl=null;
+  for (let i=0;i<21;i++){
+    const d=new Date(start.getTime()+i*864e5);
+    const el=document.createElement('div'); el.className='wday';
+    const di=d.toLocaleDateString('sv');
+    if (di===cdDate.toLocaleDateString('sv')){ el.classList.add('sel'); selEl=el; }
+    if (days[di]) el.classList.add('has');
+    el.innerHTML=`<span>${DOW[d.getDay()]}</span><b>${d.getDate()}</b><i></i>`;
+    el.onclick=async()=>{ cdDate=d; await cdLoadDay(); };
+    wrap.appendChild(el);
+  }
+  selEl?.scrollIntoView({inline:'center',block:'nearest'});
+}
+
+async function cdLoadDay(){
+  try {
+    const res = await api('client_self_state', {
+      for_date: cdDate.toLocaleDateString('sv'), ...clientDayBounds(),
+    });
+    clientData = { ...clientData, ...res };
+    document.querySelectorAll('#cdWeek .wday').forEach(el=>{
+      el.classList.remove('sel');
+    });
+    cdRenderWeek();
+    cdRenderProgram(res.program, res.exercises);
+  } catch(e){ console.error(e); }
+}
+
+function cdRenderProgram(program, exercises){
+  const isToday = cdDate.toLocaleDateString('sv') === new Date().toLocaleDateString('sv');
+  document.getElementById('cdProgTitle').textContent =
+    isToday ? 'Программа на сегодня'
+    : `Программа · ${cdDate.toLocaleDateString('ru-RU',{day:'numeric',month:'long'})}`;
+  // Комментарий тренера
+  const noteCard = document.getElementById('cdNote');
+  if (program?.coach_note){
+    noteCard.style.display='';
+    document.getElementById('cdNoteText').textContent = program.coach_note;
+  } else noteCard.style.display='none';
+
+  dWrap.innerHTML='';
+  const exs = exercises || [];
+  if (!exs.length){
+    dWrap.innerHTML = '<p class="hint" style="text-align:center;margin:18px 0">На этот день программы пока нет</p>';
+    document.getElementById('cdProgHint').style.display='none';
+    return;
+  }
+  document.getElementById('cdProgHint').style.display='';
+
+  // Группируем по muscle_group, сохраняя порядок появления
+  const order = [];
+  const byGroup = {};
+  exs.forEach(ex=>{
+    const g = ex.muscle_group || '';
+    if (!(g in byGroup)){ byGroup[g]=[]; order.push(g); }
+    byGroup[g].push(ex);
+  });
+  order.forEach(g=>{
+    if (g){
+      const h=document.createElement('div'); h.className='ghead';
+      h.style.margin='0 2px 10px';
+      h.innerHTML=`<span>${g}</span>`;
+      dWrap.appendChild(h);
+    }
+    byGroup[g].forEach((ex,idx)=>dWrap.appendChild(cdExCard(ex, idx)));
+  });
+}
+
+function cdExCard(ex, idx){
   const card=document.createElement('div'); card.className='dx';
-  card.innerHTML=`
-    <div class="ex-head">
-      <span class="ex-num">${i+1}</span>
-      <input class="ex-name" value="${ex.name}">
-    </div>
-    <div class="dx-meta"><b>${ex.meta}</b>${ex.last?' · '+ex.last:''}</div>
-    <div class="dsets"></div>`;
-  const sets=card.querySelector('.dsets');
-  ex.sets.forEach((s,j)=>{
+  const unit = ex.unit || 'кг';
+  const sets = (ex.sets||[]);
+  // план тренера для подписи
+  const planReps = sets[0]?.plan_reps;
+  const planW = sets[0]?.plan_w;
+  const metaParts = [];
+  if (sets.length) metaParts.push(`${sets.length} × ${planReps ?? '—'}`);
+  const head=document.createElement('div'); head.className='ex-head'; head.style.padding='13px 15px 9px';
+  head.innerHTML=`<span class="ex-num">${idx+1}</span>`;
+  const name=document.createElement('input'); name.className='ex-name'; name.value=ex.name; name.style.fontSize='16px';
+  head.appendChild(name);
+  card.appendChild(head);
+  const meta=document.createElement('div'); meta.className='dx-meta';
+  meta.innerHTML = `<b>${metaParts.join(' ')}</b>` + (planW!=null?` · план ${fnum(planW)} ${unit}`:'');
+  card.appendChild(meta);
+  const setsBox=document.createElement('div'); setsBox.className='dsets';
+  card.appendChild(setsBox);
+
+  // локальная копия сетов с фактом
+  const local = sets.map(s=>({
+    plan_w: s.plan_w, plan_reps: s.plan_reps,
+    fact_w: s.fact_w ?? s.plan_w, done: !!s.done,
+  }));
+
+  async function persist(){
+    try {
+      await api('client_self_exercise', { exercise_id: ex.id, sets: local });
+      toast('Сохранено · <b>тренер увидит</b>');
+    } catch(e){ toast('Ошибка сохранения'); console.error(e); }
+  }
+  async function persistName(){
+    try { await api('client_self_exercise', { exercise_id: ex.id, name: name.value.trim() });
+      toast('Сохранено · <b>тренер увидит</b>'); }
+    catch(e){ toast('Ошибка'); console.error(e); }
+  }
+  name.onchange = persistName;
+
+  local.forEach((s,j)=>{
     const row=document.createElement('div'); row.className='dset';
     row.innerHTML=`
       <span class="lbl">${j+1}-й</span>
       <div class="w">
         <button type="button" data-d="-1">−</button>
-        <input type="text" inputmode="decimal" value="${fnum(s.w)}">
+        <input type="text" inputmode="decimal" value="${fnum(s.fact_w)}">
         <button type="button" data-d="1">+</button>
-        <small>${ex.unit||'кг'}</small>
+        <small>${unit}</small>
       </div>
-      <button type="button" class="chk"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg></button>`;
+      <button type="button" class="chk${s.done?' on':''}"><svg fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg></button>`;
     const inp=row.querySelector('input');
-    const step=ex.unit==='сек'?5:2.5;
+    const step = unit==='сек'?5:2.5;
     row.querySelectorAll('.w button').forEach(b=>{
-      b.onclick=()=>{
-        const v=parseFloat(inp.value.replace(',','.'))||0;
-        inp.value=fnum(Math.max(0,v+step*+b.dataset.d));
-        toast('Сохранено · <b>тренер увидит</b>');
-      };
+      b.onclick=()=>{ const v=parseFloat(inp.value.replace(',','.'))||0;
+        const nv=Math.max(0,v+step*+b.dataset.d); inp.value=fnum(nv); s.fact_w=nv; persist(); };
     });
-    inp.addEventListener('change',()=>toast('Сохранено · <b>тренер увидит</b>'));
-    row.querySelector('.chk').onclick=e=>{
-      e.currentTarget.classList.toggle('on');
-      toast('Сохранено · <b>тренер увидит</b>');
-    };
-    sets.appendChild(row);
+    inp.onchange=()=>{ s.fact_w=parseFloat(inp.value.replace(',','.'))||0; inp.value=fnum(s.fact_w); persist(); };
+    row.querySelector('.chk').onclick=e=>{ e.currentTarget.classList.toggle('on');
+      s.done=e.currentTarget.classList.contains('on'); persist(); };
+    setsBox.appendChild(row);
   });
-  card.querySelector('.ex-name').addEventListener('change',()=>toast('Сохранено · <b>тренер увидит</b>'));
-  dWrap.appendChild(card);
-});
+  return card;
+}
 
 /* ───────── Замеры ───────── */
 const months=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
@@ -1393,7 +1669,48 @@ document.getElementById('mAddBtn').onclick=()=>{
   mForm.classList.toggle('open');
   if(mForm.classList.contains('open')) document.getElementById('inW').focus();
 };
+
+// Реальный режим: строим mEntries из базы (clientData.measurements)
+function mRenderClient(){
+  const ms = (clientData?.measurements)||[];
+  mEntries = ms.map(r=>({
+    date: new Date(r.measured_at),
+    w: Number(r.values?.weight ?? 0),
+    waist: r.values?.waist ?? '—', chest: r.values?.chest ?? '—',
+    hips: r.values?.hips ?? '—', thigh: r.values?.thigh ?? '—', arm: r.values?.arm ?? '—',
+  })).filter(e=>e.w>0);
+  if (!mEntries.length){
+    document.getElementById('mWNow').innerHTML = '— <small>кг</small>';
+    document.getElementById('mDAll').textContent=''; document.getElementById('mDLast').textContent='';
+    document.getElementById('mChart').innerHTML='';
+    document.getElementById('mGrid').innerHTML='<p class="hint" style="margin:4px 0">Замеров пока нет</p>';
+    document.getElementById('mHistory').innerHTML='';
+    return;
+  }
+  mRender();
+}
+
+async function mSaveReal(){
+  const val=id=>{ const v=parseFloat(String(document.getElementById(id).value).replace(',','.')); return isNaN(v)?null:v; };
+  const values={};
+  const map={inW:'weight',inWaist:'waist',inChest:'chest',inHips:'hips',inThigh:'thigh',inArm:'arm'};
+  Object.entries(map).forEach(([id,key])=>{ const v=val(id); if(v!=null) values[key]=v; });
+  if (values.weight==null){ toast('Укажите вес'); return; }
+  try {
+    const res = await api('client_self_measure_add', {
+      measured_at: new Date().toLocaleDateString('sv'), values,
+    });
+    clientData.measurements = [...(clientData.measurements||[]), res.measurement];
+    mForm.classList.remove('open');
+    ['inW','inWaist','inChest','inHips','inThigh','inArm'].forEach(id=>document.getElementById(id).value='');
+    mRenderClient();
+    toast('Замер сохранён · <b>тренер увидит динамику</b>');
+  } catch(e){ toast('Ошибка сохранения'); console.error(e); }
+}
+
 document.getElementById('mSaveBtn').onclick=()=>{
+  if (real && clientData){ mSaveReal(); return; }
+  // демо-режим
   const val=id=>parseFloat(document.getElementById(id).value.replace(',','.'));
   const last=mEntries[mEntries.length-1];
   mEntries.push({
