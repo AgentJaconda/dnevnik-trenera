@@ -410,7 +410,9 @@
     <button class="save" id="kSave">Сохранить цели</button>
   </div>
   <div class="form" id="pForm" style="margin-top:14px">
-    <h3>Абонемент · <span id="pName"></span></h3>
+    <h3>Абонементы · <span id="pName"></span></h3>
+    <div id="pExisting"></div>
+    <div class="label" style="margin:4px 0 10px" id="pNewLabel">Новый абонемент</div>
     <div class="f-grid">
       <div class="f"><label>Тренировок</label><input inputmode="numeric" id="pTotal" value="10"></div>
       <div class="f"><label>Цена, ₽</label><input inputmode="numeric" id="pPrice" placeholder="28000"></div>
@@ -593,6 +595,35 @@ if (tg){
 }
 const toastEl = document.getElementById('toast');
 let toastTimer;
+
+/* ─── Удобство ввода на мобильных ─── */
+// Плавающая кнопка «Готово» над клавиатурой (для числовых полей без Enter)
+const kbDone = document.createElement('button');
+kbDone.textContent = 'Готово';
+kbDone.style.cssText = 'position:fixed;right:14px;bottom:14px;z-index:200;display:none;'+
+  'background:var(--volt);color:#101203;border:none;border-radius:11px;'+
+  'font-family:\'Golos Text\';font-size:15px;font-weight:600;padding:11px 20px;'+
+  'box-shadow:0 4px 16px rgba(0,0,0,.4);cursor:pointer';
+kbDone.addEventListener('mousedown', e=>e.preventDefault()); // не терять фокус до клика
+document.addEventListener('DOMContentLoaded', ()=>document.body.appendChild(kbDone));
+if (document.body) document.body.appendChild(kbDone);
+kbDone.onclick = ()=>{ if (document.activeElement) document.activeElement.blur(); };
+
+let activeField = null;
+document.addEventListener('focusin', e=>{
+  const el = e.target;
+  if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA'){
+    activeField = el;
+    kbDone.style.display = 'block';
+    // подкрутить поле в видимую зону (над клавиатурой)
+    setTimeout(()=>{ el.scrollIntoView({behavior:'smooth', block:'center'}); }, 300);
+  }
+});
+document.addEventListener('focusout', ()=>{
+  activeField = null;
+  setTimeout(()=>{ if (!activeField) kbDone.style.display = 'none'; }, 100);
+});
+
 function toast(html){
   clearTimeout(toastTimer);
   toastEl.innerHTML = html;
@@ -803,12 +834,22 @@ function clientRow(c, archived){
   };
   if (!archived){
     mkBtn('Абонемент', '', () => {
+      // повторный тап по той же кнопке — закрыть
+      if (pForm.classList.contains('open') && pFormClient?.id === c.id){
+        pForm.classList.remove('open'); return;
+      }
+      kForm.classList.remove('open');
       pFormClient = c;
       document.getElementById('pName').textContent = c.name;
+      renderClientPasses(c);
       pForm.classList.add('open');
       pForm.scrollIntoView({behavior:'smooth', block:'center'});
     });
     mkBtn('КБЖУ', '', () => {
+      if (kForm.classList.contains('open') && kFormClient?.id === c.id){
+        kForm.classList.remove('open'); return;
+      }
+      pForm.classList.remove('open');
       kFormClient = c;
       document.getElementById('kName').textContent = c.name;
       document.getElementById('kKcal').value = c.kbju?.kcal ?? '';
@@ -901,19 +942,66 @@ document.getElementById('clientSearch').oninput = e=>renderClients(e.target.valu
 /* ───────── Продажа абонемента ───────── */
 const pForm = document.getElementById('pForm');
 let pFormClient = null;
+
+async function renderClientPasses(c){
+  const box = document.getElementById('pExisting');
+  box.innerHTML = '<p class="hint" style="margin:0 0 10px">Загружаю...</p>';
+  try {
+    const res = await api('pass_list', { client_id: c.id });
+    const list = res.passes || [];
+    if (!list.length){ box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="label" style="margin:0 0 8px">Текущие абонементы</div>';
+    list.forEach(p=>{
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:10px 12px;margin-bottom:8px';
+      const active = p.left > 0 && !p.expired;
+      const status = p.expired ? 'истёк' : (p.left>0 ? `осталось ${p.left}/${p.total}` : 'использован');
+      row.innerHTML = `
+        <div>
+          <div style="font-family:'Oswald';font-size:16px;font-weight:500">${p.total} трен. · ${Number(p.price).toLocaleString('ru-RU')} ₽</div>
+          <div style="font-size:12px;color:${active?'var(--volt-dim)':'var(--faint)'}">${status}${p.valid_until?` · до ${new Date(p.valid_until).toLocaleDateString('ru-RU')}`:''}</div>
+        </div>`;
+      const del = document.createElement('button');
+      del.style.cssText = 'border:none;background:none;color:var(--red);cursor:pointer;padding:8px;border-radius:8px;flex:none';
+      del.innerHTML = '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-9 0l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13"/></svg>';
+      del.onclick = ()=>{
+        askConfirm(`Удалить этот абонемент (${p.total} трен.)?`, async ()=>{
+          try {
+            await api('pass_delete', { pass_id: p.id });
+            toast('Абонемент удалён');
+            await renderClientPasses(c);
+            await refreshState();
+          } catch(e){ toast('Ошибка удаления'); console.error(e); }
+        });
+      };
+      row.appendChild(del);
+      box.appendChild(row);
+    });
+  } catch(e){ box.innerHTML = ''; console.error(e); }
+}
+
 document.getElementById('pSave').onclick = async ()=>{
   if (!pFormClient) return;
   const total = parseInt(document.getElementById('pTotal').value) || 0;
   const price = parseInt(document.getElementById('pPrice').value) || 0;
   const days  = parseInt(document.getElementById('pDays').value) || 0;
   if (total < 1){ toast('Укажите число тренировок'); return; }
+  if (price < 1){ toast('Укажите цену абонемента'); return; }
   const valid_until = days ? new Date(Date.now() + days*864e5).toISOString().slice(0,10) : null;
-  try {
-    await api('pass_add', { client_id: pFormClient.id, total_sessions: total, price, valid_until });
-    pForm.classList.remove('open');
-    toast(`Абонемент на <b>${total}</b> продан · +${price.toLocaleString('ru-RU')} ₽`);
-    await refreshState();
-  } catch(e){ toast('Ошибка — попробуйте ещё раз'); console.error(e); }
+  const sell = async ()=>{
+    try {
+      await api('pass_add', { client_id: pFormClient.id, total_sessions: total, price, valid_until });
+      pForm.classList.remove('open');
+      toast(`Абонемент на <b>${total}</b> продан · +${price.toLocaleString('ru-RU')} ₽`);
+      await refreshState();
+    } catch(e){ toast('Ошибка: ' + (e.message||'не удалось')); console.error(e); }
+  };
+  // Предупреждение, если уже есть активный абонемент
+  if (pFormClient.pass && pFormClient.pass.left > 0){
+    askConfirm(`У ${pFormClient.name} уже есть активный абонемент (осталось ${pFormClient.pass.left}). Продать ещё один?`, sell);
+  } else {
+    sell();
+  }
 };
 
 /* ───────── КБЖУ клиента ───────── */
@@ -928,7 +1016,7 @@ document.getElementById('kSave').onclick = async ()=>{
     kFormClient.kbju = kbju;
     kForm.classList.remove('open');
     toast(`Цели КБЖУ для <b>${kFormClient.name}</b> сохранены`);
-  } catch(e){ toast('Ошибка — попробуйте ещё раз'); console.error(e); }
+  } catch(e){ toast('Ошибка: ' + (e.message||'не удалось')); console.error(e); }
 };
 
 /* ───────── Сегодня: живой список ───────── */
