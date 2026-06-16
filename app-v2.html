@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Дневник тренера</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B0B0D; --card:#161618; --card-2:#1E1E20;
+    --line:#2A2A2D; --line-soft:#202023;
+    --text:#F5F3EF; --muted:#9B9892; --faint:#6A6862;
+    --gold:#C8A961; --gold-2:#D9BE7E; --gold-deep:#8F7239;
+    --green:#8FC07A; --red:#C97A6A;
+    --grad-gold:linear-gradient(90deg,#D9BE7E 0%,#C8A961 100%);
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{background:var(--bg) !important}
+  body{
+    background:var(--bg) !important;color:var(--text);
+    font-family:'Inter',sans-serif;font-size:15px;line-height:1.45;
+    -webkit-font-smoothing:antialiased;padding-bottom:92px;
+    max-width:460px;margin:0 auto;position:relative;min-height:100vh;
+  }
+  .bg-fix{position:fixed;inset:0;background:var(--bg);z-index:-1}
+  .num{font-feature-settings:'tnum';letter-spacing:-.01em}
+  .wrap{padding:0 20px}
+  .screen{display:none}
+  .screen.on{display:block}
+
+  /* ─── Шапка ─── */
+  header{display:flex;align-items:flex-start;justify-content:space-between;padding:22px 20px 18px}
+  .hi h1{font-size:24px;font-weight:700;letter-spacing:-.02em}
+  .hi p{color:var(--muted);font-size:14px;margin-top:4px;text-transform:capitalize}
+  .bell{position:relative;width:44px;height:44px;flex:none;border-radius:50%;
+    background:var(--card);border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .bell svg{width:21px;height:21px;stroke:var(--text);fill:none;stroke-width:1.7}
+  .bell .dot{position:absolute;top:-3px;right:-3px;min-width:20px;height:20px;padding:0 5px;
+    background:var(--gold);color:#1a1407;border-radius:10px;font-size:11px;font-weight:700;
+    display:none;align-items:center;justify-content:center}
+  .bell .dot.show{display:flex}
+
+  .sec{display:flex;align-items:baseline;justify-content:space-between;margin:26px 0 14px}
+  .sec h2{font-size:17px;font-weight:700;letter-spacing:-.01em}
+  .sec a{font-size:14px;color:var(--gold);text-decoration:none;font-weight:500;cursor:pointer}
+
+  /* ─── Плитки «Сегодня» ─── */
+  .tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:11px}
+  .tile{background:var(--card);border:1px solid var(--line);border-radius:18px;
+    padding:15px 14px 16px;cursor:pointer;transition:transform .1s;min-height:128px;
+    display:flex;flex-direction:column}
+  .tile:active{transform:scale(.97)}
+  .tile .ic{flex:1}
+  .tile .ic svg{width:27px;height:27px;stroke:var(--gold);fill:none;stroke-width:1.6}
+  .tile b{font-size:24px;font-weight:700;display:block;line-height:1;white-space:nowrap}
+  .tile span{font-size:13px;color:var(--muted);display:block;margin-top:6px}
+
+  /* ─── Цель месяца ─── */
+  .goal{margin-top:18px;cursor:pointer}
+  .goal-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .goal-top .lbl{font-size:15px;font-weight:600}
+  .goal-top .val{font-size:14px;color:var(--muted);font-weight:500}
+  .bar{height:8px;background:var(--card-2);border-radius:5px;overflow:hidden;position:relative}
+  .bar i{position:absolute;inset:0;width:0%;background:var(--grad-gold);border-radius:5px;transition:width .8s cubic-bezier(.3,.8,.3,1)}
+  .goal-pct{text-align:right;font-size:13px;color:var(--gold);font-weight:600;margin-top:6px}
+
+  /* ─── Ближайшая тренировка ─── */
+  .next{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:14px;display:flex;align-items:center;gap:13px}
+  .next .ava{width:52px;height:52px;border-radius:50%;flex:none;
+    background:var(--grad-gold);display:flex;align-items:center;justify-content:center;
+    font-size:21px;font-weight:700;color:#1a1407}
+  .next .info{flex:1;min-width:0}
+  .next .info b{font-size:16px;font-weight:700;display:block}
+  .next .info span{font-size:13px;color:var(--muted);display:block;margin-top:2px}
+  .next .go{flex:none;padding:11px 19px;border-radius:11px;border:1px solid var(--gold-deep);
+    background:transparent;color:var(--gold);font-family:'Inter';font-size:14px;font-weight:600;cursor:pointer}
+  .next .go:active{background:rgba(200,169,97,.12)}
+  .next.empty{justify-content:center;color:var(--muted);font-size:14px;padding:22px}
+
+  /* ─── Требуют внимания ─── */
+  .attention{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:6px 16px}
+  .att-row{display:flex;align-items:center;gap:13px;cursor:pointer;padding:13px 0}
+  .att-row+.att-row{border-top:1px solid var(--line)}
+  .att-ic{width:38px;height:38px;border-radius:10px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--card-2)}
+  .att-ic svg{width:19px;height:19px;stroke:var(--gold);fill:none;stroke-width:1.7}
+  .att-row .txt{flex:1}
+  .att-row .txt b{font-size:15px;font-weight:600;display:block}
+  .att-row .txt span{font-size:12.5px;color:var(--muted)}
+  .att-row .cnt{font-size:19px;font-weight:700;color:var(--gold)}
+  .att-row .chev{stroke:var(--faint);width:18px;height:18px;fill:none;stroke-width:2}
+
+  /* ─── Быстрые действия ─── */
+  .quick{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}
+  .qbtn{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:15px 6px;text-align:center;cursor:pointer;transition:transform .1s}
+  .qbtn:active{transform:scale(.95)}
+  .qbtn .qic{margin:0 auto 11px;display:flex;align-items:center;justify-content:center}
+  .qbtn .qic svg{width:28px;height:28px;stroke:var(--gold);fill:none;stroke-width:1.5}
+  .qbtn span{font-size:11.5px;color:var(--muted);font-weight:500;line-height:1.3;display:block}
+
+  /* ─── Аналитика ─── */
+  .ana{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .acard{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:13px 10px;cursor:pointer;transition:transform .1s;display:flex;flex-direction:column}
+  .acard:active{transform:scale(.97)}
+  .acard .albl{font-size:11.5px;color:var(--muted);font-weight:500;margin-bottom:5px;white-space:nowrap}
+  .acard .aval{font-size:15px;font-weight:700;line-height:1.1;white-space:nowrap}
+  .acard .adelta{font-size:11px;font-weight:600;color:var(--green);margin-top:2px;display:block}
+  .acard .adelta.warn{color:var(--gold)}
+  .spark{margin-top:8px;height:22px;width:100%;display:block}
+
+  /* ─── Нижнее меню ─── */
+  nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:460px;
+    background:rgba(11,11,13,.94);backdrop-filter:blur(20px);
+    border-top:1px solid var(--line);display:flex;padding:10px 8px 24px;z-index:20}
+  nav button{flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;
+    align-items:center;gap:5px;color:var(--faint);font-family:'Inter'}
+  nav button svg{width:23px;height:23px;stroke:currentColor;fill:none;stroke-width:1.6}
+  nav button span{font-size:10.5px;font-weight:500}
+  nav button.on{color:var(--gold)}
+
+  /* ─── Тост ─── */
+  .toast{position:fixed;left:50%;bottom:104px;transform:translateX(-50%) translateY(20px);
+    background:#222024;color:var(--text);border:1px solid var(--line);
+    padding:12px 18px;border-radius:13px;font-size:14px;max-width:88%;text-align:center;
+    opacity:0;pointer-events:none;transition:.3s;z-index:50}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast b{color:var(--gold)}
+
+  .placeholder{padding:60px 24px;text-align:center;color:var(--muted)}
+  .placeholder h2{font-size:18px;color:var(--text);margin-bottom:8px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="bg-fix"></div>
+
+<header>
+  <div class="hi">
+    <h1 id="greeting">Дневник тренера</h1>
+    <p id="subtitle">загрузка…</p>
+  </div>
+  <div class="bell" id="bellBtn">
+    <svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg>
+    <span class="dot" id="bellDot">0</span>
+  </div>
+</header>
+
+<!-- ════════ ГЛАВНАЯ ════════ -->
+<section class="screen on" id="scr-home">
+  <div class="wrap">
+    <div class="sec"><h2>Сегодня</h2><a onclick="show('scr-finance')">Подробнее</a></div>
+    <div class="tiles">
+      <div class="tile" onclick="show('scr-workouts')">
+        <div class="ic"><svg viewBox="0 0 24 24"><path d="M8 12h8" stroke-width="2.2"/><rect x="4.5" y="7.5" width="3.2" height="9" rx="1" fill="#C8A961" stroke="none"/><rect x="16.3" y="7.5" width="3.2" height="9" rx="1" fill="#C8A961" stroke="none"/><rect x="2" y="9.5" width="2.3" height="5" rx="0.8" fill="#C8A961" stroke="none"/><rect x="19.7" y="9.5" width="2.3" height="5" rx="0.8" fill="#C8A961" stroke="none"/></svg></div>
+        <b class="num" id="homeWorkouts">0</b><span>Тренировок</span>
+      </div>
+      <div class="tile" onclick="show('scr-clients')">
+        <div class="ic"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3 3-5 6-5s6 2 6 5M16 6a3 3 0 010 6M21 19c0-2-1.5-3.5-3.5-4.2"/></svg></div>
+        <b class="num" id="homeClients">0</b><span>Клиентов</span>
+      </div>
+      <div class="tile" onclick="show('scr-finance')">
+        <div class="ic"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="13" rx="2.5"/><path d="M2.5 10.5h19M16.5 15h2.5"/></svg></div>
+        <b class="num" id="homeIncome">0</b><span>Доход ₽</span>
+      </div>
+    </div>
+
+    <div class="goal" id="goalBlock">
+      <div class="goal-top">
+        <span class="lbl">Цель месяца</span>
+        <span class="val"><span class="num" id="goalCur">0</span> / <span class="num" id="goalMax">—</span></span>
+      </div>
+      <div class="bar"><i id="goalBar"></i></div>
+      <div class="goal-pct" id="goalPct">0%</div>
+    </div>
+
+    <div class="sec"><h2>Ближайшая тренировка</h2></div>
+    <div id="nextWrap"></div>
+
+    <div class="sec" id="attSec" style="display:none"><h2>Требуют внимания</h2></div>
+    <div class="attention" id="attBlock" style="display:none"></div>
+
+    <div class="sec"><h2>Быстрые действия</h2></div>
+    <div class="quick">
+      <div class="qbtn" onclick="quickAddClient()">
+        <div class="qic"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 19c0-3 3-5 6-5s4 1 5 2M18 8v6M15 11h6"/></svg></div>
+        <span>Добавить<br>клиента</span>
+      </div>
+      <div class="qbtn" onclick="show('scr-workouts')">
+        <div class="qic"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M12 13v4M10 15h4"/></svg></div>
+        <span>Создать<br>тренировку</span>
+      </div>
+      <div class="qbtn" onclick="show('scr-passes')">
+        <div class="qic"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20M16 15h2"/></svg></div>
+        <span>Продать<br>абонемент</span>
+      </div>
+      <div class="qbtn" onclick="show('scr-clients')">
+        <div class="qic"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 01-9 8.4 9 9 0 01-4-1L3 20l1.2-4.5a8.4 8.4 0 01-1-4A8.4 8.4 0 0112 3a8.4 8.4 0 019 8.5z"/></svg></div>
+        <span>Написать<br>клиенту</span>
+      </div>
+    </div>
+
+    <div class="sec"><h2 id="anaTitle">Аналитика</h2><a onclick="show('scr-finance')">Подробнее</a></div>
+    <div class="ana" id="anaBlock"></div>
+  </div>
+</section>
+
+<!-- ════════ Заглушки экранов (соберём следующими) ════════ -->
+<section class="screen" id="scr-clients"><div class="placeholder"><h2>Клиенты</h2><p>Этот экран собираю следующим в новом стиле.</p></div></section>
+<section class="screen" id="scr-workouts"><div class="placeholder"><h2>Тренировки</h2><p>Скоро — в новом стиле.</p></div></section>
+<section class="screen" id="scr-passes"><div class="placeholder"><h2>Абонементы</h2><p>Скоро — в новом стиле.</p></div></section>
+<section class="screen" id="scr-finance"><div class="placeholder"><h2>Финансы</h2><p>Скоро — в новом стиле.</p></div></section>
+<section class="screen" id="scr-more"><div class="placeholder"><h2>Ещё</h2><p>Профиль, настройки, шаблоны, помощь.</p></div></section>
+
+<nav id="nav">
+  <button class="on" data-s="scr-home"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg><span>Главная</span></button>
+  <button data-s="scr-clients"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3 20c0-3.5 3-6 6-6s6 2.5 6 6M16 6a3 3 0 010 6"/></svg><span>Клиенты</span></button>
+  <button data-s="scr-workouts"><svg viewBox="0 0 24 24"><path d="M8 12h8" stroke-width="2.2"/><rect x="4.5" y="7.5" width="3.2" height="9" rx="1" fill="currentColor" stroke="none"/><rect x="16.3" y="7.5" width="3.2" height="9" rx="1" fill="currentColor" stroke="none"/><rect x="2" y="9.5" width="2.3" height="5" rx="0.8" fill="currentColor" stroke="none"/><rect x="19.7" y="9.5" width="2.3" height="5" rx="0.8" fill="currentColor" stroke="none"/></svg><span>Тренировки</span></button>
+  <button data-s="scr-passes"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18"/></svg><span>Абонементы</span></button>
+  <button data-s="scr-more"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/></svg><span>Ещё</span></button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ═══════════ Telegram + тёмная тема ═══════════ */
+const tg = window.Telegram?.WebApp;
+let userName = 'Тренер';
+let inviteCode = null;
+if (tg){
+  tg.ready(); tg.expand();
+  try { tg.setBackgroundColor('#0B0B0D'); tg.setHeaderColor('#0B0B0D'); } catch(e){}
+  if (tg.initDataUnsafe?.user?.first_name) userName = tg.initDataUnsafe.user.first_name;
+  inviteCode = tg.initDataUnsafe?.start_param || null;
+}
+if (!inviteCode){ const q = new URLSearchParams(location.search).get('invite'); if (q) inviteCode = q; }
+
+/* ═══════════ Тост ═══════════ */
+const toastEl = document.getElementById('toast');
+let toastTimer;
+function toast(html){
+  clearTimeout(toastTimer);
+  toastEl.innerHTML = html; toastEl.classList.add('show');
+  toastTimer = setTimeout(()=>toastEl.classList.remove('show'), 2600);
+}
+
+/* ═══════════ Навигация ═══════════ */
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on', s.id===id));
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on', b.dataset.s===id));
+  window.scrollTo({top:0});
+}
+document.querySelectorAll('#nav button').forEach(b=>{
+  b.onclick = ()=>show(b.dataset.s);
+});
+document.getElementById('bellBtn').onclick = ()=>{
+  const items = (homeData.notifications||[]);
+  if (!items.length){ toast('Новых уведомлений нет'); return; }
+  alert('Уведомления:\n\n' + items.map(n=>'• '+n).join('\n'));
+};
+
+/* ═══════════ База данных ═══════════ */
+const API_URL = 'https://gcdljtkqtjewejssamhb.supabase.co/functions/v1/api';
+const API_KEY = 'sb_publishable_-no3M7Lpk_ggNaK9MfLyog_7Hf5564t';
+const DEV = new URLSearchParams(location.search).get('dev');
+let real = false, me = null, myClients = [], homeData = {};
+
+async function api(action, payload = {}){
+  const r = await fetch(API_URL, {
+    method:'POST',
+    headers:{ 'Content-Type':'application/json', 'apikey':API_KEY, 'Authorization':'Bearer '+API_KEY },
+    body: JSON.stringify({
+      action,
+      initData: tg?.initData || '',
+      dev: DEV ? { secret: DEV, user:{ id:1, first_name:'Дмитрий' } } : undefined,
+      invite_code: inviteCode,
+      ...payload,
+    }),
+  });
+  const data = await r.json();
+  if (!r.ok || data.error) throw new Error(data.error || ('HTTP '+r.status));
+  return data;
+}
+
+function dayBounds(){
+  const d = new Date(); d.setHours(0,0,0,0);
+  return {
+    today_from: d.toISOString(),
+    today_to: new Date(d.getTime()+864e5).toISOString(),
+    week_from: new Date(Date.now()-7*864e5).toISOString(),
+  };
+}
+
+/* ═══════════ Дата в шапке ═══════════ */
+function setDate(){
+  const d = new Date();
+  const days=['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
+  const mon=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  document.getElementById('subtitle').textContent = `${days[d.getDay()]}, ${d.getDate()} ${mon[d.getMonth()]}`;
+}
+
+/* ═══════════ Рендер Главной ═══════════ */
+const MONTHS_GEN = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+function fmtMoney(n){ return Number(n||0).toLocaleString('ru-RU'); }
+function initial(name){ return (name?.[0]||'?').toUpperCase(); }
+
+function renderHome(){
+  const h = homeData;
+  // Плитки
+  const todayCount = (h.today||[]).filter(s=>s.status!=='cancelled').length;
+  document.getElementById('homeWorkouts').textContent = todayCount;
+  document.getElementById('homeClients').textContent = (myClients||[]).filter(c=>c.status!=='archived').length;
+  document.getElementById('homeIncome').textContent = fmtMoney(h.week?.income);
+
+  // Цель месяца
+  const inc = h.home?.month_income || 0;
+  const goal = h.home?.month_goal || 0;
+  document.getElementById('goalCur').textContent = fmtMoney(inc);
+  if (goal > 0){
+    document.getElementById('goalMax').textContent = fmtMoney(goal) + ' ₽';
+    const pct = Math.min(Math.round(inc/goal*100), 100);
+    document.getElementById('goalPct').textContent = pct + '%';
+    setTimeout(()=>{ document.getElementById('goalBar').style.width = pct + '%'; }, 100);
+  } else {
+    document.getElementById('goalMax').textContent = 'задать цель';
+    document.getElementById('goalPct').textContent = '';
+    document.getElementById('goalBar').style.width = '0%';
+  }
+
+  // Ближайшая тренировка
+  const nw = document.getElementById('nextWrap');
+  const ns = h.home?.next_session;
+  if (ns){
+    const t = new Date(ns.starts_at);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const sd = new Date(t); sd.setHours(0,0,0,0);
+    const dayLabel = sd.getTime()===today.getTime() ? 'Сегодня'
+      : sd.getTime()===today.getTime()+864e5 ? 'Завтра'
+      : t.toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
+    const time = t.toTimeString().slice(0,5);
+    const groups = (ns.groups||[]).join(' + ') || ns.kind || 'Тренировка';
+    nw.innerHTML = `
+      <div class="next">
+        <div class="ava">${initial(ns.client_name)}</div>
+        <div class="info">
+          <b>${ns.client_name}</b>
+          <span>${dayLabel}, ${time}</span>
+          <span>${groups}</span>
+        </div>
+        <button class="go" onclick="show('scr-workouts')">Открыть</button>
+      </div>`;
+  } else {
+    nw.innerHTML = '<div class="next empty">Запланированных тренировок нет</div>';
+  }
+
+  // Требуют внимания
+  const sleeping = h.home?.sleeping || [];
+  const expiring = h.home?.expiring || [];
+  const attSec = document.getElementById('attSec');
+  const att = document.getElementById('attBlock');
+  if (sleeping.length || expiring.length){
+    attSec.style.display = '';
+    att.style.display = '';
+    att.innerHTML = '';
+    if (sleeping.length){
+      att.innerHTML += `
+        <div class="att-row" onclick="showSleeping()">
+          <div class="att-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div>
+          <div class="txt"><b>Давно не были</b><span>${sleeping.length===1?'1 клиент':sleeping.length+' клиента'} — больше 2 недель</span></div>
+          <span class="cnt num">${sleeping.length}</span>
+          <svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+        </div>`;
+    }
+    if (expiring.length){
+      att.innerHTML += `
+        <div class="att-row" onclick="showExpiring()">
+          <div class="att-ic"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 2v4M8 2v4"/></svg></div>
+          <div class="txt"><b>Заканчиваются абонементы</b><span>${expiring.length===1?'1 клиент':expiring.length+' клиента'} — пора предложить продление</span></div>
+          <span class="cnt num">${expiring.length}</span>
+          <svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+        </div>`;
+    }
+  } else {
+    attSec.style.display = 'none';
+    att.style.display = 'none';
+  }
+
+  // Аналитика (заглушка с реальным доходом месяца; графики — позже из истории)
+  document.getElementById('anaTitle').textContent = 'Аналитика за ' + MONTHS_GEN[new Date().getMonth()];
+  const ana = document.getElementById('anaBlock');
+  const activeClients = (myClients||[]).filter(c=>c.status!=='archived').length;
+  const monthDone = (h.today||[]).length; // упрощённо; точная цифра придёт из finance
+  ana.innerHTML = `
+    <div class="acard" onclick="show('scr-finance')">
+      <div class="albl">Доход</div>
+      <div class="aval num" style="font-size:14px">${fmtMoney(inc)} ₽</div>
+      <span class="adelta">за месяц</span>
+    </div>
+    <div class="acard" onclick="show('scr-clients')">
+      <div class="albl">Клиенты</div>
+      <div class="aval num">${activeClients}</div>
+      <span class="adelta">активных</span>
+    </div>
+    <div class="acard" onclick="show('scr-workouts')">
+      <div class="albl">Тренировки</div>
+      <div class="aval num">${h.week?.done||0}</div>
+      <span class="adelta">за неделю</span>
+    </div>
+    <div class="acard" onclick="show('scr-passes')">
+      <div class="albl">Абонементы</div>
+      <div class="aval num">${expiring.length}</div>
+      <span class="adelta warn">истекают</span>
+    </div>`;
+
+  // Колокольчик
+  const notes = [];
+  if (ns){ const t=new Date(ns.starts_at); notes.push(`${ns.client_name} — тренировка ${t.toTimeString().slice(0,5)}`); }
+  expiring.forEach(e=>notes.push(`У ${e.name} заканчивается абонемент`));
+  sleeping.forEach(s=>notes.push(`${s.name} не был ${s.days} дней`));
+  homeData.notifications = notes;
+  const dot = document.getElementById('bellDot');
+  if (notes.length){ dot.textContent = notes.length; dot.classList.add('show'); }
+  else dot.classList.remove('show');
+}
+
+function showSleeping(){
+  const list = homeData.home?.sleeping || [];
+  alert('Давно не были:\n\n' + list.map(s=>`• ${s.name} — ${s.days} дней назад`).join('\n') +
+    '\n\n(Скоро: тап по клиенту → написать в Telegram)');
+}
+function showExpiring(){
+  const list = homeData.home?.expiring || [];
+  alert('Заканчиваются абонементы:\n\n' + list.map(e=>`• ${e.name} — осталось ${e.left}`).join('\n') +
+    '\n\n(Скоро: тап → напомнить о продлении)');
+}
+function quickAddClient(){ show('scr-clients'); toast('Добавление клиента — на экране «Клиенты»'); }
+
+/* Цель месяца — задать */
+document.getElementById('goalBlock').onclick = async ()=>{
+  if (!real) return;
+  const cur = homeData.home?.month_goal || '';
+  const val = prompt('Цель по доходу на месяц (₽):', cur);
+  if (val === null) return;
+  const goal = parseInt(String(val).replace(/\D/g,'')) || 0;
+  try {
+    await api('trainer_set_goal', { goal });
+    homeData.home.month_goal = goal || null;
+    renderHome();
+    toast(goal ? 'Цель месяца обновлена' : 'Цель убрана');
+  } catch(e){ toast('Ошибка'); }
+};
+
+/* ═══════════ Старт ═══════════ */
+async function boot(){
+  setDate();
+  if (!tg?.initData && !DEV){
+    document.getElementById('greeting').textContent = 'Привет, Дмитрий 👋';
+    return; // вне Telegram без dev — показываем пустой каркас
+  }
+  try {
+    const res = await api('bootstrap', dayBounds());
+    if (res.role === 'trainer'){
+      real = true; me = res.trainer; myClients = res.clients || [];
+      homeData = res;
+      userName = me.name || userName;
+      document.getElementById('greeting').textContent = `Привет, ${userName} 👋`;
+      renderHome();
+    } else if (res.role === 'client'){
+      // клиентская сторона — отдельным этапом; пока сообщение
+      document.body.innerHTML = '<div class="placeholder" style="padding-top:120px"><h2>Дневник клиента</h2><p>Клиентская часть в новом стиле — следующим этапом.</p></div>';
+    }
+  } catch(e){
+    console.error('boot:', e);
+    document.getElementById('subtitle').textContent = 'ошибка подключения';
+  }
+}
+boot();
+</script>
+</body>
+</html>
