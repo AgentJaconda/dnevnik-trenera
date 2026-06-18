@@ -1463,43 +1463,56 @@ async function loadPasses(){
     renderPasses();
   } catch(e){ console.error('passes_all', e); toast('Не удалось загрузить абонементы'); }
 }
-function paIsExpiring(p){
-  if (p.status !== 'active') return false;
-  if (p.left <= 2) return true;
-  if (p.valid_until){ return (new Date(p.valid_until) - Date.now())/864e5 <= 10; }
+/* Группируем абонементы по клиенту: один клиент = один баланс (сумма активных) */
+function paGroups(){
+  const m = {};
+  paPasses.forEach(p=>{
+    let g = m[p.client_id];
+    if (!g){ g = m[p.client_id] = { client_id:p.client_id, client_name:p.client_name,
+      activeLeft:0, activeTotal:0, activeUsed:0, vu:null, anyActive:false, hasExpired:false }; }
+    if (p.status==='active'){
+      g.anyActive = true;
+      g.activeLeft += p.left; g.activeTotal += p.total; g.activeUsed += p.used;
+      if (p.valid_until && (!g.vu || p.valid_until > g.vu)) g.vu = p.valid_until;
+    } else if (p.status==='expired'){ g.hasExpired = true; }
+  });
+  return Object.values(m);
+}
+function paIsExpiringG(g){
+  if (!g.anyActive) return false;
+  if (g.activeLeft <= 2) return true;
+  if (g.vu){ return (new Date(g.vu) - Date.now())/864e5 <= 10; }
   return false;
 }
 function renderPasses(){
   document.querySelectorAll('#paFilters .tab').forEach(t=>t.classList.toggle('on', t.dataset.f===paFilter));
-  let list = paPasses;
-  if (paFilter==='active') list = paPasses.filter(p=>p.status==='active');
-  else if (paFilter==='expiring') list = paPasses.filter(paIsExpiring);
-  else if (paFilter==='expired') list = paPasses.filter(p=>p.status!=='active');
+  let groups = paGroups();
+  if (paFilter==='active') groups = groups.filter(g=>g.anyActive);
+  else if (paFilter==='expiring') groups = groups.filter(paIsExpiringG);
+  else if (paFilter==='expired') groups = groups.filter(g=>!g.anyActive);
   const wrap = document.getElementById('paList');
-  wrap.innerHTML = list.length ? list.map(paCard).join('')
+  wrap.innerHTML = groups.length ? groups.map(paCardG).join('')
     : '<p class="empty-pane">Нет абонементов в этой категории</p>';
 }
-function paCard(p){
+function paCardG(g){
   let tagCls='act', tagTxt='активен';
-  if (p.status==='used'){ tagCls=''; tagTxt='использован'; }
-  else if (p.status==='expired'){ tagCls='warn'; tagTxt='истёк'; }
-  else if (paIsExpiring(p)){ tagCls='warn'; tagTxt='истекает'; }
-  const pct = p.total ? Math.round(p.used/p.total*100) : 0;
-  const until = p.valid_until ? new Date(p.valid_until).toLocaleDateString('ru-RU') : 'бессрочно';
-  const dim = p.status!=='active';
+  if (!g.anyActive){ if (g.hasExpired){ tagCls='warn'; tagTxt='истёк'; } else { tagCls=''; tagTxt='использован'; } }
+  else if (paIsExpiringG(g)){ tagCls='warn'; tagTxt='истекает'; }
+  const pct = g.activeTotal ? Math.round(g.activeUsed/g.activeTotal*100) : 0;
+  const until = g.vu ? new Date(g.vu).toLocaleDateString('ru-RU') : 'бессрочно';
+  const dim = !g.anyActive;
+  const sub = g.anyActive ? `осталось ${g.activeLeft}/${g.activeTotal} · до ${until}` : 'нет активного абонемента';
   return `
-    <div class="cl-item" style="display:block${dim?';opacity:.62':''}" onclick="paOpenClient('${p.client_id}')">
+    <div class="cl-item" style="display:block${dim?';opacity:.62':''}" onclick="paOpenClient('${g.client_id}')">
       <div style="display:flex;align-items:center;gap:13px">
-        <div class="cl-ava ${dim?'dim':''}">${initial(p.client_name)}</div>
+        <div class="cl-ava ${dim?'dim':''}">${initial(g.client_name)}</div>
         <div class="who" style="flex:1;min-width:0">
-          <b>${p.client_name}</b>
-          <span>осталось ${p.left}/${p.total} · до ${until}</span>
+          <b>${g.client_name}</b>
+          <span>${sub}</span>
         </div>
         <span class="cl-tag ${tagCls}">${tagTxt}</span>
       </div>
-      <div style="margin-top:11px;height:6px;background:var(--card-2);border-radius:4px;overflow:hidden;position:relative">
-        <i style="position:absolute;inset:0;width:${pct}%;background:var(--grad-gold);border-radius:4px"></i>
-      </div>
+      ${g.anyActive?`<div style="margin-top:11px;height:6px;background:var(--card-2);border-radius:4px;overflow:hidden;position:relative"><i style="position:absolute;inset:0;width:${pct}%;background:var(--grad-gold);border-radius:4px"></i></div>`:''}
     </div>`;
 }
 function paOpenClient(id){ show('scr-clients'); openCard(id); }
