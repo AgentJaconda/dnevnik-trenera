@@ -426,7 +426,18 @@
     <button class="add-btn" id="wkAddBtn" style="margin-top:14px">+ Записать тренировку</button>
   </div>
 </section>
-<section class="screen" id="scr-passes"><div class="placeholder"><h2>Абонементы</h2><p>Скоро — в новом стиле.</p></div></section>
+<section class="screen" id="scr-passes">
+  <div class="wrap">
+    <div class="tabs" id="paFilters">
+      <div class="tab on" data-f="all">Все</div>
+      <div class="tab" data-f="active">Активные</div>
+      <div class="tab" data-f="expiring">Истекают</div>
+      <div class="tab" data-f="expired">Истёкшие</div>
+    </div>
+    <div id="paList"></div>
+    <button class="add-btn" id="paSellBtn" style="margin-top:14px">+ Продать абонемент</button>
+  </div>
+</section>
 <section class="screen" id="scr-finance"><div class="placeholder"><h2>Финансы</h2><p>Скоро — в новом стиле.</p></div></section>
 <section class="screen" id="scr-more"><div class="placeholder"><h2>Ещё</h2><p>Профиль, настройки, шаблоны, помощь.</p></div></section>
 
@@ -541,6 +552,14 @@
   </div>
 </div>
 
+<!-- Модалка: выбор клиента (продажа абонемента и т.п.) -->
+<div class="sheet-overlay" id="pickSheet">
+  <div class="sheet">
+    <h3><span id="pickTitle">Выбери клиента</span><span class="x" onclick="closeSheet('pickSheet')">✕</span></h3>
+    <div id="pickList"></div>
+  </div>
+</div>
+
 <!-- Модалка: цель месяца -->
 <div class="sheet-overlay" id="goalSheet">
   <div class="sheet">
@@ -583,6 +602,7 @@ function show(id){
     if (card && card.style.display==='block'){ closeCard(); }
   }
   if (id==='scr-workouts' && typeof loadWorkouts==='function') loadWorkouts();
+  if (id==='scr-passes' && typeof loadPasses==='function') loadPasses();
 }
 document.querySelectorAll('#nav button').forEach(b=>{
   b.onclick = ()=>show(b.dataset.s);
@@ -1349,6 +1369,7 @@ async function deletePass(passId){
     cardData = await api('client_card', { client_id: cardData.client.id });
     renderPsExisting(); renderCard();
     await reloadClients();
+    if (typeof loadPasses==='function') loadPasses();
   } catch(e){ toast('Ошибка'); }
 }
 document.getElementById('psSave').onclick = async ()=>{
@@ -1365,6 +1386,7 @@ document.getElementById('psSave').onclick = async ()=>{
     cardData = await api('client_card', { client_id: cardData.client.id });
     renderCard();
     await reloadClients();
+    if (typeof loadPasses==='function') loadPasses();
   } catch(e){ toast('Ошибка: '+(e.message||'')); }
 };
 
@@ -1430,6 +1452,77 @@ async function reloadClients(){
     renderHome();
   } catch(e){ console.error(e); }
 }
+
+/* ═══════════ Экран «Абонементы» ═══════════ */
+let paFilter = 'all', paPasses = [];
+async function loadPasses(){
+  if (!real){ document.getElementById('paList').innerHTML = ''; return; }
+  try {
+    const res = await api('passes_all', {});
+    paPasses = res.passes || [];
+    renderPasses();
+  } catch(e){ console.error('passes_all', e); toast('Не удалось загрузить абонементы'); }
+}
+function paIsExpiring(p){
+  if (p.status !== 'active') return false;
+  if (p.left <= 2) return true;
+  if (p.valid_until){ return (new Date(p.valid_until) - Date.now())/864e5 <= 10; }
+  return false;
+}
+function renderPasses(){
+  document.querySelectorAll('#paFilters .tab').forEach(t=>t.classList.toggle('on', t.dataset.f===paFilter));
+  let list = paPasses;
+  if (paFilter==='active') list = paPasses.filter(p=>p.status==='active');
+  else if (paFilter==='expiring') list = paPasses.filter(paIsExpiring);
+  else if (paFilter==='expired') list = paPasses.filter(p=>p.status!=='active');
+  const wrap = document.getElementById('paList');
+  wrap.innerHTML = list.length ? list.map(paCard).join('')
+    : '<p class="empty-pane">Нет абонементов в этой категории</p>';
+}
+function paCard(p){
+  let tagCls='act', tagTxt='активен';
+  if (p.status==='used'){ tagCls=''; tagTxt='использован'; }
+  else if (p.status==='expired'){ tagCls='warn'; tagTxt='истёк'; }
+  else if (paIsExpiring(p)){ tagCls='warn'; tagTxt='истекает'; }
+  const pct = p.total ? Math.round(p.used/p.total*100) : 0;
+  const until = p.valid_until ? new Date(p.valid_until).toLocaleDateString('ru-RU') : 'бессрочно';
+  const dim = p.status!=='active';
+  return `
+    <div class="cl-item" style="display:block${dim?';opacity:.62':''}" onclick="paOpenClient('${p.client_id}')">
+      <div style="display:flex;align-items:center;gap:13px">
+        <div class="cl-ava ${dim?'dim':''}">${initial(p.client_name)}</div>
+        <div class="who" style="flex:1;min-width:0">
+          <b>${p.client_name}</b>
+          <span>осталось ${p.left}/${p.total} · до ${until}</span>
+        </div>
+        <span class="cl-tag ${tagCls}">${tagTxt}</span>
+      </div>
+      <div style="margin-top:11px;height:6px;background:var(--card-2);border-radius:4px;overflow:hidden;position:relative">
+        <i style="position:absolute;inset:0;width:${pct}%;background:var(--grad-gold);border-radius:4px"></i>
+      </div>
+    </div>`;
+}
+function paOpenClient(id){ show('scr-clients'); openCard(id); }
+document.querySelectorAll('#paFilters .tab').forEach(t=>{ t.onclick=()=>{ paFilter=t.dataset.f; renderPasses(); }; });
+
+/* выбор клиента (для продажи абонемента) */
+function openClientPicker(title, onPick){
+  const active = (myClients||[]).filter(c=>c.status!=='archived');
+  if (!active.length){ toast('Сначала добавьте клиента'); return; }
+  document.getElementById('pickTitle').textContent = title || 'Выбери клиента';
+  const wrap = document.getElementById('pickList');
+  wrap.innerHTML = active.map(c=>
+    `<div class="cl-item" data-id="${c.id}"><div class="cl-ava">${initial(c.name)}</div><div class="who"><b>${c.name}</b>${c.pass?`<span class="ok">абонемент ${c.pass.left}/${c.pass.total}</span>`:''}</div></div>`
+  ).join('');
+  wrap.querySelectorAll('.cl-item').forEach(el=>{ el.onclick=()=>{ closeSheet('pickSheet'); onPick(el.dataset.id); }; });
+  sheet('pickSheet');
+}
+document.getElementById('paSellBtn').onclick = ()=>{
+  openClientPicker('Кому продаём абонемент', async (clientId)=>{
+    try { cardData = await api('client_card', { client_id: clientId }); openPassSheet(); }
+    catch(e){ toast('Ошибка'); }
+  });
+};
 
 document.getElementById('clientSearch').oninput = e=>{ clientFilter = e.target.value; renderClients(); };
 
