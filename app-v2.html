@@ -295,6 +295,40 @@
     background:var(--card-2);color:var(--text);font-family:'Inter';font-size:13px;font-weight:500;cursor:pointer}
   .s-actions button.danger{color:var(--red);border-color:rgba(201,122,106,.3)}
   .s-actions button.go{color:var(--gold);border-color:var(--gold-deep)}
+
+  /* ─── Конструктор программы ─── */
+  .editor{position:fixed;top:0;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:460px;
+    background:var(--bg);z-index:40;overflow-y:auto;display:none;padding:16px 0 50px}
+  .editor.on{display:block}
+  .exq{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:11px}
+  .exq-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+  .exq-num{width:24px;height:24px;border-radius:7px;background:var(--card-2);color:var(--gold);
+    font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+  .exq-name{flex:1;min-width:0;background:var(--card-2);border:1px solid var(--line);border-radius:10px;
+    padding:10px 12px;color:var(--text);font-family:'Inter';font-size:16px}
+  .exq-name:focus{outline:none;border-color:var(--gold-deep)}
+  .exq-del{flex:none;cursor:pointer;color:var(--red);padding:6px;line-height:0}
+  .exq-del svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8}
+  .exq-params{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+  .exq-param{text-align:center}
+  .exq-param .plbl{font-size:11px;color:var(--muted);margin-bottom:5px;display:block}
+  .stepper{display:flex;align-items:center;background:var(--card-2);border:1px solid var(--line);
+    border-radius:10px;overflow:hidden}
+  .stepper button{flex:none;width:30px;height:38px;background:none;border:none;color:var(--gold);
+    font-size:19px;cursor:pointer;font-family:'Inter'}
+  .stepper button:active{background:rgba(200,169,97,.12)}
+  .stepper input{flex:1;width:100%;min-width:0;text-align:center;background:none;border:none;
+    color:var(--text);font-family:'Inter';font-size:15px;font-weight:600}
+  .stepper input:focus{outline:none}
+  .gsec-title{font-size:14px;font-weight:600;color:var(--gold);margin:16px 0 9px}
+  .addex{display:block;width:100%;border:1px dashed var(--line);background:transparent;color:var(--gold);
+    font-family:'Inter';font-size:14px;font-weight:600;padding:12px;border-radius:12px;cursor:pointer;margin-bottom:14px}
+  .addex:active{background:rgba(200,169,97,.08)}
+  .libchips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none}
+  .libchips::-webkit-scrollbar{display:none}
+  .libchip{flex:none;padding:8px 13px;border-radius:10px;border:1px solid var(--line);background:var(--card);
+    color:var(--muted);font-family:'Inter';font-size:13px;cursor:pointer;white-space:nowrap}
+  .libchip:active{border-color:var(--gold);color:var(--gold)}
 </style>
 </head>
 <body>
@@ -395,6 +429,26 @@
 <section class="screen" id="scr-passes"><div class="placeholder"><h2>Абонементы</h2><p>Скоро — в новом стиле.</p></div></section>
 <section class="screen" id="scr-finance"><div class="placeholder"><h2>Финансы</h2><p>Скоро — в новом стиле.</p></div></section>
 <section class="screen" id="scr-more"><div class="placeholder"><h2>Ещё</h2><p>Профиль, настройки, шаблоны, помощь.</p></div></section>
+
+<!-- ════════ Конструктор программы ════════ -->
+<div class="editor" id="progEditor">
+  <div class="wrap">
+    <div class="cc-top">
+      <div class="cc-back" onclick="progClose()"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg></div>
+      <div class="cc-name"><h1>Программа</h1><p><span id="progName"></span> · <span id="progDateLbl">на сегодня</span></p></div>
+    </div>
+    <div class="days" id="progDays"></div>
+    <div style="font-size:12.5px;color:var(--muted);font-weight:600;margin:4px 0 8px">ГРУППЫ МЫШЦ</div>
+    <div class="tabs" id="progGroups"></div>
+    <div class="sec" style="margin:18px 0 10px"><h2>Упражнения</h2><span id="progSum" style="font-size:13px;color:var(--muted);font-weight:500"></span></div>
+    <div id="progList"></div>
+    <div style="font-size:12.5px;color:var(--muted);font-weight:600;margin:6px 0 8px">БЫСТРО ДОБАВИТЬ</div>
+    <div class="libchips" id="progLib"></div>
+    <div style="font-size:12.5px;color:var(--muted);font-weight:600;margin:12px 0 8px">ЗАМЕТКА КЛИЕНТУ</div>
+    <textarea class="notes-area" id="progNote" placeholder="Например: разминка 10 мин, отдых между подходами 90 сек"></textarea>
+    <button class="add-btn" id="progSave" style="margin-top:16px">Сохранить программу</button>
+  </div>
+</div>
 
 <nav id="nav">
   <button class="on" data-s="scr-home"><svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8M5 10v10h14V10"/></svg><span>Главная</span></button>
@@ -1020,10 +1074,185 @@ function inviteClient(){
   if (tg?.openTelegramLink) tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`);
   else { navigator.clipboard?.writeText(link); toast('Ссылка скопирована'); }
 }
-function editProgram(){
-  show('scr-workouts');
-  toast('Конструктор программ — на экране «Тренировки»');
+/* ═══════════ Конструктор программы ═══════════ */
+const PROG_GROUPS = ['Грудь','Спина','Ноги','Плечи','Руки','Пресс','Кардио','Растяжка'];
+const PROG_LIB = ['Приседания','Жим лёжа','Становая тяга','Румынская тяга','Выпады','Жим гантелей сидя','Тяга верхнего блока','Жим ногами','Подтягивания','Планка'];
+let progClientId=null, progDate=null, progEx=[], progGroupsSel=new Set(), progDays={};
+const pIso = d => d.toLocaleDateString('sv');
+const pDayStart = d => { const x=new Date(d); x.setHours(0,0,0,0); return x; };
+const pnum = n => String(n).replace('.', ',');
+
+async function editProgram(){
+  if (!cardData) return;
+  progClientId = cardData.client.id;
+  progDate = pDayStart(new Date());
+  document.getElementById('progName').textContent = cardData.client.name;
+  document.getElementById('progEditor').classList.add('on');
+  window.scrollTo({top:0});
+  await progRenderDays();
+  await progLoad();
 }
+function progClose(){
+  document.getElementById('progEditor').classList.remove('on');
+  if (cardData) renderCard();   // обновить вкладку «Программа» в карточке
+}
+async function progRenderDays(){
+  const start = pDayStart(new Date()); start.setDate(start.getDate()-7);
+  try {
+    const res = await api('program_days', {
+      client_id: progClientId, from: pIso(start),
+      to: pIso(new Date(start.getTime()+21*864e5)),
+    });
+    progDays = {}; (res.days||[]).forEach(d=>{ progDays[d.for_date] = d.groups || []; });
+  } catch(e){ console.error('program_days', e); }
+  const wrap = document.getElementById('progDays');
+  const DOW=['вс','пн','вт','ср','чт','пт','сб'];
+  let html='';
+  for (let i=0;i<21;i++){
+    const d=new Date(start.getTime()+i*864e5);
+    const has = !!progDays[pIso(d)];
+    const on = pIso(d)===pIso(progDate);
+    html+=`<div class="day${on?' on':''}" data-iso="${pIso(d)}">
+      <div class="dow">${DOW[d.getDay()]}</div><div class="dnum num">${d.getDate()}</div>
+      <div class="ddot${has?'':' hidden'}"></div></div>`;
+  }
+  wrap.innerHTML=html;
+  wrap.querySelectorAll('.day').forEach(el=>{
+    el.onclick=()=>{ const [y,m,dd]=el.dataset.iso.split('-').map(Number); progDate=new Date(y,m-1,dd); progRenderDays(); progLoad(); };
+  });
+  wrap.querySelector('.day.on')?.scrollIntoView({inline:'center',block:'nearest'});
+}
+function progDateLabel(){
+  return pIso(progDate)===pIso(pDayStart(new Date())) ? 'на сегодня'
+    : 'на ' + progDate.toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
+}
+async function progLoad(){
+  document.getElementById('progDateLbl').textContent = progDateLabel();
+  try {
+    const res = await api('program_get', { client_id: progClientId, for_date: pIso(progDate) });
+    const p = res.program;
+    progGroupsSel = new Set(p?.groups || []);
+    document.getElementById('progNote').value = p?.coach_note || '';
+    progEx = (res.exercises||[]).map(e=>({
+      name: e.name,
+      sets: (e.sets||[]).length || 3,
+      reps: e.sets?.[0]?.plan_reps ?? 10,
+      w: Number(e.sets?.[0]?.plan_w ?? 20),
+      group: e.muscle_group || '',
+    }));
+  } catch(e){ console.error('program_get', e); progEx=[]; progGroupsSel=new Set(); }
+  progRenderGroups();
+  progRenderList();
+}
+function progRenderGroups(){
+  const wrap = document.getElementById('progGroups');
+  wrap.innerHTML = PROG_GROUPS.map(g=>`<div class="tab${progGroupsSel.has(g)?' on':''}" data-g="${g}">${g}</div>`).join('');
+  wrap.querySelectorAll('.tab').forEach(el=>{
+    el.onclick=()=>{
+      const g=el.dataset.g;
+      progGroupsSel.has(g) ? progGroupsSel.delete(g) : progGroupsSel.add(g);
+      progRenderGroups(); progRenderList();
+    };
+  });
+}
+function progRenderList(){
+  const wrap = document.getElementById('progList');
+  wrap.innerHTML='';
+  const groups=[...progGroupsSel];
+  if (groups.length){
+    groups.forEach(g=>{
+      const sec=document.createElement('div');
+      sec.innerHTML=`<div class="gsec-title">${g}</div>`;
+      progEx.filter(e=>(e.group||'')===g).forEach(ex=>sec.appendChild(progExCard(ex)));
+      const add=document.createElement('button'); add.className='addex'; add.textContent='+ упражнение';
+      add.onclick=()=>progAddEx(g);
+      sec.appendChild(add);
+      wrap.appendChild(sec);
+    });
+    const orphan=progEx.filter(e=>!groups.includes(e.group||''));
+    if (orphan.length){
+      const sec=document.createElement('div');
+      sec.innerHTML='<div class="gsec-title">Без группы</div>';
+      orphan.forEach(ex=>sec.appendChild(progExCard(ex)));
+      wrap.appendChild(sec);
+    }
+  } else {
+    progEx.forEach(ex=>wrap.appendChild(progExCard(ex)));
+    const add=document.createElement('button'); add.className='addex'; add.textContent='+ упражнение';
+    add.onclick=()=>progAddEx('');
+    wrap.appendChild(add);
+  }
+  progSummary();
+}
+function progExCard(ex){
+  const card=document.createElement('div'); card.className='exq';
+  const head=document.createElement('div'); head.className='exq-head';
+  const num=document.createElement('span'); num.className='exq-num'; num.textContent=progEx.indexOf(ex)+1;
+  const name=document.createElement('input'); name.className='exq-name';
+  name.placeholder='Название упражнения'; name.value=ex.name;
+  name.oninput=()=>{ ex.name=name.value; };
+  const del=document.createElement('div'); del.className='exq-del';
+  del.innerHTML='<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-9 0l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13"/></svg>';
+  del.onclick=()=>{ progEx.splice(progEx.indexOf(ex),1); progRenderList(); };
+  head.append(num,name,del);
+  const params=document.createElement('div'); params.className='exq-params';
+  [['Подходы','sets',1,1],['Повторы','reps',1,1],['Вес, кг','w',2.5,0]].forEach(([lbl,f,step,min])=>{
+    const p=document.createElement('div'); p.className='exq-param';
+    p.innerHTML=`<span class="plbl">${lbl}</span>`;
+    p.appendChild(progStepper(ex,f,step,min));
+    params.appendChild(p);
+  });
+  card.append(head,params);
+  return card;
+}
+function progStepper(ex,f,step,min){
+  const d=document.createElement('div'); d.className='stepper';
+  d.innerHTML='<button type="button">−</button><input type="text" inputmode="decimal"><button type="button">+</button>';
+  const [mi,pl]=d.querySelectorAll('button'); const inp=d.querySelector('input');
+  const show=()=>inp.value=pnum(ex[f]); show();
+  const set=v=>{ ex[f]=Math.max(min, Math.round(v*10)/10); show(); progSummary(); };
+  mi.onclick=()=>set(ex[f]-step); pl.onclick=()=>set(ex[f]+step);
+  inp.onchange=()=>set(parseFloat(inp.value.replace(',','.'))||min);
+  return d;
+}
+function progAddEx(group){
+  progEx.push({name:'',sets:3,reps:10,w:20,group});
+  progRenderList();
+  [...document.querySelectorAll('#progList .exq-name')].pop()?.focus();
+}
+function progSummary(){
+  const n=progEx.length, sets=progEx.reduce((s,e)=>s+(+e.sets||0),0);
+  const el=document.getElementById('progSum');
+  if (el) el.textContent = n ? `${n} упр · ${sets} подходов` : '';
+}
+document.getElementById('progLib').innerHTML = PROG_LIB.map(n=>`<button class="libchip">${n}</button>`).join('');
+document.getElementById('progLib').querySelectorAll('.libchip').forEach(b=>{
+  b.onclick=()=>{ const g=[...progGroupsSel][0]||''; progEx.push({name:b.textContent,sets:3,reps:10,w:20,group:g}); progRenderList(); };
+});
+document.getElementById('progSave').onclick = async ()=>{
+  if (!progClientId) return;
+  const groups=[...progGroupsSel];
+  const ordered = groups.length
+    ? [...groups.flatMap(g=>progEx.filter(e=>(e.group||'')===g)), ...progEx.filter(e=>!groups.includes(e.group||''))]
+    : progEx;
+  const exercises = ordered.filter(e=>e.name.trim()).map(e=>({
+    name:e.name.trim(), unit:'кг', muscle_group:e.group||null,
+    sets:Array.from({length: Math.max(1, +e.sets||1)}, ()=>({plan_w:e.w, plan_reps:e.reps})),
+  }));
+  try {
+    await api('program_save', {
+      client_id: progClientId, for_date: pIso(progDate),
+      title: groups.join(' + ')||null, groups,
+      coach_note: document.getElementById('progNote').value.trim()||null,
+      exercises,
+    });
+    toast('Программа сохранена · клиент увидит её в дневнике');
+    await progRenderDays();
+    if (cardData && cardData.client.id===progClientId){
+      cardData = await api('client_card', { client_id: progClientId });
+    }
+  } catch(e){ toast(e.message||'Ошибка'); console.error(e); }
+};
 
 /* ─── Редактирование профиля ─── */
 let editingClient = null;
