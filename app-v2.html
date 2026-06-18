@@ -863,10 +863,20 @@ async function openCard(clientId){
   const card = document.getElementById('clientCard');
   card.style.display = 'block';
   card.innerHTML = '<p class="empty-pane">Загрузка…</p>';
+  const backBtn = '<button class="add-btn" style="max-width:200px;margin:14px auto 0" onclick="closeCard()">← Назад</button>';
   try {
     cardData = await api('client_card', { client_id: clientId });
+  } catch(e){
+    console.error('client_card', e);
+    card.innerHTML = '<p class="empty-pane">Не удалось загрузить карточку.<br>'+(e.message||e)+'</p>'+backBtn;
+    return;
+  }
+  try {
     renderCard();
-  } catch(e){ card.innerHTML = '<p class="empty-pane">Ошибка загрузки</p>'; }
+  } catch(e){
+    console.error('renderCard', e);
+    card.innerHTML = '<p class="empty-pane">Ошибка отрисовки карточки.<br>'+(e.message||e)+'</p>'+backBtn;
+  }
 }
 function closeCard(){
   document.getElementById('clientCard').style.display = 'none';
