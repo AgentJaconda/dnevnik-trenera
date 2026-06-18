@@ -479,6 +479,23 @@
   </div>
 </div>
 
+<!-- Модалка: информация (уведомления, спящие, истекающие) -->
+<div class="sheet-overlay" id="infoSheet">
+  <div class="sheet">
+    <h3><span id="infoTitle"></span><span class="x" onclick="closeSheet('infoSheet')">✕</span></h3>
+    <div id="infoBody"></div>
+  </div>
+</div>
+
+<!-- Модалка: цель месяца -->
+<div class="sheet-overlay" id="goalSheet">
+  <div class="sheet">
+    <h3><span>Цель по доходу на месяц</span><span class="x" onclick="closeSheet('goalSheet')">✕</span></h3>
+    <div class="field"><label>Сумма, ₽</label><input inputmode="numeric" id="goalInput" placeholder="100000"></div>
+    <button class="sheet-save" id="goalSave">Сохранить</button>
+  </div>
+</div>
+
 <script>
 /* ═══════════ Telegram + тёмная тема ═══════════ */
 const tg = window.Telegram?.WebApp;
@@ -516,10 +533,18 @@ function show(id){
 document.querySelectorAll('#nav button').forEach(b=>{
   b.onclick = ()=>show(b.dataset.s);
 });
+/* Стилизованная инфо-модалка (вместо системного alert) */
+function showInfo(title, bodyHTML){
+  document.getElementById('infoTitle').textContent = title;
+  document.getElementById('infoBody').innerHTML = bodyHTML || '<p class="empty-pane">Пусто</p>';
+  sheet('infoSheet');
+}
 document.getElementById('bellBtn').onclick = ()=>{
   const items = (homeData.notifications||[]);
   if (!items.length){ toast('Новых уведомлений нет'); return; }
-  alert('Уведомления:\n\n' + items.map(n=>'• '+n).join('\n'));
+  showInfo('Уведомления', items.map(n=>
+    `<div class="row-item"><div class="rdot" style="background:var(--gold)"></div><div class="rmain"><b>${n}</b></div></div>`
+  ).join(''));
 };
 
 /* ═══════════ База данных ═══════════ */
@@ -566,6 +591,18 @@ function setDate(){
 const MONTHS_GEN = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
 function fmtMoney(n){ return Number(n||0).toLocaleString('ru-RU'); }
 function initial(name){ return (name?.[0]||'?').toUpperCase(); }
+/* Мини-график (спарклайн) для аналитики. Пока иллюстративный; позже — реальные данные по дням. */
+function sparkSVG(pts){
+  const max=Math.max(...pts), min=Math.min(...pts), rng=(max-min)||1, n=pts.length;
+  const X=i=>(i/(n-1))*100;
+  const Y=v=>21 - ((v-min)/rng)*18;   // в пределах высоты 22, с отступами
+  const line=pts.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+  return `<svg class="spark" viewBox="0 0 100 22" preserveAspectRatio="none">
+    <polygon points="0,22 ${line} 100,22" fill="rgba(200,169,97,0.10)"/>
+    <polyline points="${line}" fill="none" stroke="#C8A961" stroke-width="1.6"
+      stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke"/>
+  </svg>`;
+}
 
 function renderHome(){
   const h = homeData;
@@ -658,21 +695,25 @@ function renderHome(){
       <div class="albl">Доход</div>
       <div class="aval num" style="font-size:14px">${fmtMoney(inc)} ₽</div>
       <span class="adelta">за месяц</span>
+      ${sparkSVG([4,5,4.5,6,5.5,7,8])}
     </div>
     <div class="acard" onclick="show('scr-clients')">
       <div class="albl">Клиенты</div>
       <div class="aval num">${activeClients}</div>
       <span class="adelta">активных</span>
+      ${sparkSVG([2,2,3,3,3,4,4])}
     </div>
     <div class="acard" onclick="show('scr-workouts')">
       <div class="albl">Тренировки</div>
       <div class="aval num">${h.week?.done||0}</div>
       <span class="adelta">за неделю</span>
+      ${sparkSVG([1,3,2,3,2,4,3])}
     </div>
     <div class="acard" onclick="show('scr-passes')">
       <div class="albl">Абонементы</div>
       <div class="aval num">${expiring.length}</div>
       <span class="adelta warn">истекают</span>
+      ${sparkSVG([3,2,2,1,2,1,1])}
     </div>`;
 
   // Колокольчик
@@ -688,27 +729,31 @@ function renderHome(){
 
 function showSleeping(){
   const list = homeData.home?.sleeping || [];
-  alert('Давно не были:\n\n' + list.map(s=>`• ${s.name} — ${s.days} дней назад`).join('\n') +
-    '\n\n(Скоро: тап по клиенту → написать в Telegram)');
+  showInfo('Давно не были', list.map(s=>
+    `<div class="row-item"><div class="cl-ava" style="width:38px;height:38px;font-size:15px">${initial(s.name)}</div><div class="rmain"><b>${s.name}</b><span>${s.days} дней назад</span></div></div>`
+  ).join('') || '<p class="empty-pane">Все на связи 👍</p>');
 }
 function showExpiring(){
   const list = homeData.home?.expiring || [];
-  alert('Заканчиваются абонементы:\n\n' + list.map(e=>`• ${e.name} — осталось ${e.left}`).join('\n') +
-    '\n\n(Скоро: тап → напомнить о продлении)');
+  showInfo('Заканчиваются абонементы', list.map(e=>
+    `<div class="row-item"><div class="cl-ava" style="width:38px;height:38px;font-size:15px">${initial(e.name)}</div><div class="rmain"><b>${e.name}</b><span>осталось ${e.left} ${e.left===1?'тренировка':e.left<5?'тренировки':'тренировок'}</span></div></div>`
+  ).join('') || '<p class="empty-pane">Нет истекающих абонементов</p>');
 }
 function quickAddClient(){ show('scr-clients'); toast('Добавление клиента — на экране «Клиенты»'); }
 
 /* Цель месяца — задать */
-document.getElementById('goalBlock').onclick = async ()=>{
+document.getElementById('goalBlock').onclick = ()=>{
   if (!real) return;
-  const cur = homeData.home?.month_goal || '';
-  const val = prompt('Цель по доходу на месяц (₽):', cur);
-  if (val === null) return;
-  const goal = parseInt(String(val).replace(/\D/g,'')) || 0;
+  document.getElementById('goalInput').value = homeData.home?.month_goal || '';
+  sheet('goalSheet');
+};
+document.getElementById('goalSave').onclick = async ()=>{
+  const goal = parseInt(String(document.getElementById('goalInput').value).replace(/\D/g,'')) || 0;
   try {
     await api('trainer_set_goal', { goal });
-    homeData.home.month_goal = goal || null;
+    if (homeData.home) homeData.home.month_goal = goal || null;
     renderHome();
+    closeSheet('goalSheet');
     toast(goal ? 'Цель месяца обновлена' : 'Цель убрана');
   } catch(e){ toast('Ошибка'); }
 };
@@ -718,6 +763,10 @@ const GOAL_LABEL = { loss:'Похудение', gain:'Набор массы', ma
 
 function sheet(id){ document.getElementById(id).classList.add('show'); }
 function closeSheet(id){ document.getElementById(id).classList.remove('show'); }
+/* Закрытие модалки тапом по тёмному фону */
+document.querySelectorAll('.sheet-overlay').forEach(ov=>{
+  ov.addEventListener('click', e=>{ if(e.target===ov) ov.classList.remove('show'); });
+});
 
 let clientFilter = '';
 function clItemHTML(c){
@@ -1127,6 +1176,7 @@ document.getElementById('ssSave').onclick = async ()=>{
     } else {
       cardData = await api('client_card', { client_id: cardData.client.id });
       renderCard();
+      await reloadClients();
     }
   } catch(e){ toast('Ошибка: '+(e.message||'')); }
 };
@@ -1138,7 +1188,7 @@ async function reloadClients(){
     myClients = res.clients || [];
     homeData = { ...homeData, ...res };
     renderClients();
-    if (document.getElementById('scr-home').classList.contains('on')) renderHome();
+    renderHome();
   } catch(e){ console.error(e); }
 }
 
@@ -1172,9 +1222,14 @@ async function loadWorkouts(){
     });
     wkSessions = res.today || [];
     myClients = res.clients || myClients;
-    homeData = { ...homeData, ...res };
+    // res.today здесь — диапазон 21 день; для Главной оставляем только сегодняшние,
+    // чтобы плитка «Тренировок сегодня» и аналитика считались верно
+    const tk = wkDayStart(new Date()).getTime();
+    homeData = { ...homeData, ...res, today: wkSessions.filter(s=>wkDayStart(new Date(s.starts_at)).getTime()===tk) };
     renderDays();
     renderDayList();
+    renderClients();   // остаток абонемента в списке клиентов — свежий
+    renderHome();      // плитки и аналитика на Главной — свежие
   } catch(e){ console.error('loadWorkouts', e); toast('Не удалось загрузить тренировки'); }
 }
 function renderDays(){
