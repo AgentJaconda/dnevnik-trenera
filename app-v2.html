@@ -329,6 +329,30 @@
   .libchip{flex:none;padding:8px 13px;border-radius:10px;border:1px solid var(--line);background:var(--card);
     color:var(--muted);font-family:'Inter';font-size:13px;cursor:pointer;white-space:nowrap}
   .libchip:active{border-color:var(--gold);color:var(--gold)}
+
+  /* ─── Экран «Ещё» ─── */
+  .more-prof{display:flex;align-items:center;gap:14px;padding:6px 0 2px}
+  .more-prof .cc-ava{width:56px;height:56px;font-size:23px}
+  .more-prof h1{font-size:20px;font-weight:700}
+  .more-prof p{font-size:13px;color:var(--muted);margin-top:3px}
+  .more-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:2px 16px}
+  .more-row{display:flex;align-items:center;gap:13px;padding:14px 0}
+  .more-row+.more-row{border-top:1px solid var(--line)}
+  .more-ic{width:36px;height:36px;border-radius:10px;flex:none;display:flex;align-items:center;justify-content:center;background:var(--card-2)}
+  .more-ic svg{width:19px;height:19px;stroke:var(--gold);fill:none;stroke-width:1.7}
+  .more-txt{flex:1;min-width:0}
+  .more-txt b{font-size:15px;font-weight:600;display:block}
+  .more-txt span{font-size:12.5px;color:var(--muted)}
+  .more-row.tap{cursor:pointer}
+  .more-row.tap:active{opacity:.7}
+  .more-row .soon{font-size:11.5px;color:var(--faint);background:var(--card-2);padding:4px 9px;border-radius:7px;font-weight:500}
+  .more-row .chev{width:18px;height:18px;stroke:var(--faint);fill:none;stroke-width:2;flex:none}
+  .switch{position:relative;width:46px;height:27px;flex:none;cursor:pointer}
+  .switch input{opacity:0;width:0;height:0;position:absolute}
+  .switch i{position:absolute;inset:0;background:var(--card-2);border:1px solid var(--line);border-radius:14px;transition:.2s}
+  .switch i:before{content:"";position:absolute;width:21px;height:21px;border-radius:50%;background:var(--faint);top:2px;left:2px;transition:.2s}
+  .switch input:checked + i{background:var(--gold-deep);border-color:var(--gold-deep)}
+  .switch input:checked + i:before{background:#1a1407;transform:translateX(19px)}
 </style>
 </head>
 <body>
@@ -439,7 +463,56 @@
   </div>
 </section>
 <section class="screen" id="scr-finance"><div class="placeholder"><h2>Финансы</h2><p>Скоро — в новом стиле.</p></div></section>
-<section class="screen" id="scr-more"><div class="placeholder"><h2>Ещё</h2><p>Профиль, настройки, шаблоны, помощь.</p></div></section>
+<section class="screen" id="scr-more">
+  <div class="wrap">
+    <div class="more-prof">
+      <div class="cc-ava" id="moreAva">Т</div>
+      <div><h1 id="moreName">Тренер</h1><p id="morePlan">—</p></div>
+    </div>
+
+    <div class="sec"><h2>Настройки</h2></div>
+    <div class="more-card">
+      <div class="more-row">
+        <div class="more-ic"><svg viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 01-3.4 0"/></svg></div>
+        <div class="more-txt"><b>Напоминания клиентам</b><span>Авто-уведомления о тренировках</span></div>
+        <label class="switch"><input type="checkbox" id="notifyToggle"><i></i></label>
+      </div>
+    </div>
+
+    <div class="sec"><h2>Подписка</h2></div>
+    <div class="more-card">
+      <div class="more-row tap" onclick="showInfo('Подписка', subInfoHTML())">
+        <div class="more-ic"><svg viewBox="0 0 24 24"><path d="M12 2l2.4 5.4L20 8l-4 4 1 6-5-3-5 3 1-6-4-4 5.6-.6z"/></svg></div>
+        <div class="more-txt"><b id="subTitle">Тариф</b><span id="subSub">—</span></div>
+        <svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+      </div>
+    </div>
+
+    <div class="sec"><h2>Прочее</h2></div>
+    <div class="more-card">
+      <div class="more-row tap" onclick="soonToast()">
+        <div class="more-ic"><svg viewBox="0 0 24 24"><path d="M4 4h11l5 5v11H4zM15 4v5h5"/></svg></div>
+        <div class="more-txt"><b>Шаблоны программ</b></div>
+        <span class="soon">скоро</span>
+      </div>
+      <div class="more-row tap" onclick="soonToast()">
+        <div class="more-ic"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg></div>
+        <div class="more-txt"><b>Экспорт данных</b></div>
+        <span class="soon">скоро</span>
+      </div>
+      <div class="more-row tap" onclick="showHelp()">
+        <div class="more-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 015 0c0 2-2.5 2-2.5 4M12 17h.01"/></svg></div>
+        <div class="more-txt"><b>Помощь</b></div>
+        <svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+      </div>
+      <div class="more-row tap" onclick="showAbout()">
+        <div class="more-ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8h.01M11 12h1v4h1"/></svg></div>
+        <div class="more-txt"><b>О приложении</b></div>
+        <svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
+      </div>
+    </div>
+  </div>
+</section>
 
 <!-- ════════ Конструктор программы ════════ -->
 <div class="editor" id="progEditor">
@@ -603,6 +676,7 @@ function show(id){
   }
   if (id==='scr-workouts' && typeof loadWorkouts==='function') loadWorkouts();
   if (id==='scr-passes' && typeof loadPasses==='function') loadPasses();
+  if (id==='scr-more' && typeof renderMore==='function') renderMore();
 }
 document.querySelectorAll('#nav button').forEach(b=>{
   b.onclick = ()=>show(b.dataset.s);
@@ -1536,6 +1610,63 @@ document.getElementById('paSellBtn').onclick = ()=>{
     catch(e){ toast('Ошибка'); }
   });
 };
+
+/* ═══════════ Экран «Ещё» ═══════════ */
+function subStatus(){
+  const now = Date.now();
+  if (me?.paid_until && new Date(me.paid_until) > now)
+    return { title:'Подписка активна', sub:'до '+new Date(me.paid_until).toLocaleDateString('ru-RU') };
+  if (me?.trial_ends_at){
+    const d = Math.ceil((new Date(me.trial_ends_at)-now)/864e5);
+    if (d > 0) return { title:'Пробный период', sub:`осталось ${d} ${d===1?'день':d<5?'дня':'дней'}` };
+    return { title:'Пробный период истёк', sub:'оформи подписку' };
+  }
+  return { title:'Бесплатный доступ', sub:'тариф ещё не подключён' };
+}
+function renderMore(){
+  if (!me) return;
+  document.getElementById('moreAva').textContent = initial(me.name||userName);
+  document.getElementById('moreName').textContent = me.name || userName;
+  const s = subStatus();
+  document.getElementById('morePlan').textContent = s.title + (s.sub?' · '+s.sub:'');
+  document.getElementById('subTitle').textContent = s.title;
+  document.getElementById('subSub').textContent = s.sub || '—';
+  const tgl = document.getElementById('notifyToggle');
+  tgl.checked = me.notify?.reminders !== false;
+}
+document.getElementById('notifyToggle').onchange = async function(){
+  const want = this.checked;
+  try {
+    await api('trainer_set_notify', { reminders: want });
+    if (me) me.notify = { reminders: want };
+    toast(want ? 'Напоминания включены' : 'Напоминания выключены');
+  } catch(e){ toast('Ошибка'); this.checked = !want; }
+};
+function subInfoHTML(){
+  const s = subStatus();
+  return `<div style="font-size:14px;line-height:1.6;color:var(--muted)">
+    <p><b style="color:var(--text)">${s.title}</b>${s.sub?' — '+s.sub:''}</p>
+    <p style="margin-top:10px">Подписка ~490 ₽/мес откроет полный доступ. Оплата появится в одном из ближайших обновлений — пока пользуйся свободно.</p>
+  </div>`;
+}
+function showHelp(){
+  showInfo('Помощь', `<div style="font-size:14px;line-height:1.65;color:var(--muted)">
+    <p style="margin-bottom:8px"><b style="color:var(--text)">Коротко, как пользоваться:</b></p>
+    <p>• <b style="color:var(--text)">Клиенты</b> — добавляй, заполняй профиль, продавай абонементы.</p>
+    <p>• <b style="color:var(--text)">Тренировки</b> — записывай занятия и отмечай статусы (проведена / неявка).</p>
+    <p>• <b style="color:var(--text)">Программа</b> — в карточке клиента собирай тренировку из упражнений.</p>
+    <p>• <b style="color:var(--text)">Абонементы</b> — следи за остатком и продлевай.</p>
+    <p style="margin-top:10px">Клиент по приглашению видит свою программу и веса в своём дневнике.</p>
+    <p style="margin-top:10px">Вопросы — пиши в @DnevnikTrenera_bot.</p>
+  </div>`);
+}
+function showAbout(){
+  showInfo('О приложении', `<div style="font-size:14px;line-height:1.65;color:var(--muted)">
+    <p><b style="color:var(--text)">Дневник тренера</b> — приложение для персональных тренеров: клиенты, абонементы, тренировки, программы.</p>
+    <p style="margin-top:8px">Версия v2 (бета).</p>
+  </div>`);
+}
+function soonToast(){ toast('Эта часть — <b>скоро</b> 🔧'); }
 
 document.getElementById('clientSearch').oninput = e=>{ clientFilter = e.target.value; renderClients(); };
 
