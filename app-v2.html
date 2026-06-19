@@ -831,10 +831,7 @@ document.addEventListener('click', async (e)=>{
       }
       toast('Профиль сохранён');
     } else {
-      const res = await api('client_add', { name });
-      if (res.client && (payload.age||payload.weight_kg||payload.height_cm||payload.goal)){
-        await api('client_set_profile', { client_id: res.client.id, ...payload });
-      }
+      await api('client_add', { name, ...payload });
       toast(`Клиент <b>${name}</b> добавлен`);
       await reloadClients();
     }
@@ -1244,6 +1241,12 @@ function paneProfile(){
     </div>
     <div class="cc-actions" style="grid-template-columns:1fr;margin-top:10px">
       <div class="cc-act" onclick="inviteClient()"><svg viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v14"/></svg><span>${cardData.client.tg_id?'Ссылка на дневник':'Пригласить в дневник'}</span></div>
+    </div>
+    <div class="cc-actions" style="grid-template-columns:1fr;margin-top:10px">
+      ${cardData.client.status==='archived'
+        ? `<div class="cc-act" onclick="setClientArchive(false)" style="color:var(--green)"><svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8M20 12a8 8 0 11-16 0 8 8 0 0116 0z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span>Восстановить из архива</span></div>`
+        : `<div class="cc-act" onclick="setClientArchive(true)" style="color:var(--faint)"><svg viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span>В архив</span></div>`
+      }
     </div>`;
 }
 
@@ -1252,14 +1255,21 @@ function paneWorkouts(){
   if (!ss.length) return '<p class="empty-pane">Тренировок пока нет</p>';
   const SC = { planned:'#9B9892', done:'#8FC07A', cancelled:'#C97A6A', no_show:'#C97A6A' };
   const SL = { planned:'запланирована', done:'проведена', cancelled:'отменена', no_show:'неявка' };
-  return ss.map(s=>{
+  let html = '', lastMonth = '';
+  ss.forEach(s=>{
     const t = new Date(s.starts_at);
-    return `<div class="row-item">
+    const mo = t.toLocaleDateString('ru-RU',{month:'long',year:'numeric'});
+    if (mo !== lastMonth){
+      html += `<div style="font-size:12px;font-weight:600;color:var(--muted);margin:${lastMonth?'16px':'4px'} 0 8px;letter-spacing:.05em;text-transform:uppercase">${mo}</div>`;
+      lastMonth = mo;
+    }
+    html += `<div class="row-item">
       <div class="rdot" style="background:${SC[s.status]||'#9B9892'}"></div>
       <div class="rdate">${t.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit'})}<br>${t.toTimeString().slice(0,5)}</div>
       <div class="rmain"><b>${s.kind||'Тренировка'}</b><span>${SL[s.status]||s.status}</span></div>
     </div>`;
-  }).join('');
+  });
+  return html;
 }
 
 function paneProgram(){
@@ -1289,13 +1299,29 @@ function paneProgress(){
   const first = m[0], last = m[m.length-1];
   const fw = first.values?.weight, lw = last.values?.weight;
   const diff = (fw && lw) ? (lw - fw).toFixed(1) : null;
+  const bodyLabels = [['waist','Талия'],['chest','Грудь'],['hips','Бёдра'],['thigh','Бедро'],['arm','Бицепс']];
+  const hasBody = bodyLabels.some(([k])=> last.values?.[k] != null);
+  let bodyHTML = '';
+  if (hasBody){
+    bodyHTML = '<div style="font-size:12.5px;font-weight:600;color:var(--muted);margin:18px 0 10px;letter-spacing:.04em">ОБЪЁМЫ, СМ</div>'
+      + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">';
+    bodyLabels.forEach(([k,l])=>{
+      const val = last.values?.[k], fval = first.values?.[k];
+      const d = (val != null && fval != null) ? +(Number(val) - Number(fval)).toFixed(1) : null;
+      const delta = d == null || d === 0 ? '' : (d > 0 ? '+' : '') + d;
+      const dColor = d == null ? '' : d < 0 ? 'var(--green)' : 'var(--red)';
+      bodyHTML += `<div class="cc-stat"><b class="num">${val != null ? val : '—'}</b><span>${l}${delta ? ` <i style="font-size:11px;color:${dColor};font-style:normal">${delta}</i>` : ''}</span></div>`;
+    });
+    bodyHTML += '</div>';
+  }
   return `
     <div class="cc-stats" style="margin-bottom:14px">
       <div class="cc-stat"><b class="num">${lw||'—'}</b><span>вес сейчас</span></div>
       <div class="cc-stat"><b class="num" style="color:${diff<0?'var(--green)':'var(--gold)'}">${diff!==null?(diff>0?'+':'')+diff:'—'}</b><span>изменение</span></div>
       <div class="cc-stat"><b class="num">${m.length}</b><span>замеров</span></div>
     </div>
-    <canvas id="progCanvas" style="width:100%;height:160px;background:var(--card);border:1px solid var(--line);border-radius:14px"></canvas>`;
+    <canvas id="progCanvas" style="width:100%;height:160px;background:var(--card);border:1px solid var(--line);border-radius:14px"></canvas>
+    ${bodyHTML}`;
 }
 
 function drawProgress(){
@@ -1356,6 +1382,19 @@ function inviteClient(){
   if (tg?.openTelegramLink) tg.openTelegramLink(`https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(text)}`);
   else { navigator.clipboard?.writeText(link); toast('Ссылка скопирована'); }
 }
+async function setClientArchive(doArchive){
+  const msg = doArchive ? 'Перенести клиента в архив?' : 'Восстановить клиента?';
+  const ok = tg?.showConfirm ? await new Promise(r=>tg.showConfirm(msg,r)) : confirm(msg);
+  if (!ok) return;
+  try {
+    await api('client_set_status', { client_id: cardData.client.id, status: doArchive ? 'archived' : 'active' });
+    cardData.client.status = doArchive ? 'archived' : 'active';
+    renderCard();
+    await reloadClients();
+    toast(doArchive ? 'Клиент перенесён в архив' : 'Клиент восстановлен');
+  } catch(e){ toast('Ошибка: '+(e.message||'')); }
+}
+
 /* ═══════════ Конструктор программы ═══════════ */
 const PROG_GROUPS = ['Грудь','Спина','Ноги','Плечи','Руки','Пресс','Кардио','Растяжка'];
 const PROG_LIB = ['Приседания','Жим лёжа','Становая тяга','Румынская тяга','Выпады','Жим гантелей сидя','Тяга верхнего блока','Жим ногами','Подтягивания','Планка'];
@@ -2119,8 +2158,7 @@ function cdExCard(ex, num){
   const head=document.createElement('div'); head.className='cd-ex-head';
   const numEl=document.createElement('div'); numEl.className='cd-ex-num'; numEl.textContent=num;
   const nameIn=document.createElement('input'); nameIn.className='cd-ex-name'; nameIn.value=ex.name; nameIn.type='text';
-  nameIn.setAttribute('enterkeyhint','done'); nameIn.setAttribute('autocomplete','off');
-  nameIn.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); nameIn.blur(); } });
+  nameIn.readOnly = true; nameIn.style.pointerEvents='none'; nameIn.style.userSelect='none';
   head.append(numEl,nameIn); card.appendChild(head);
   if (sets.length){
     const meta=document.createElement('div'); meta.className='cd-ex-meta';
@@ -2130,7 +2168,6 @@ function cdExCard(ex, num){
   const local=sets.map(s=>({plan_w:s.plan_w,plan_reps:s.plan_reps,fact_w:s.fact_w??s.plan_w,done:!!s.done}));
   async function persist(){ try{await api('client_self_exercise',{exercise_id:ex.id,sets:local}); toast('Сохранено · тренер увидит');}catch{toast('Ошибка');} }
   const dPersist=debounce(persist,350);
-  nameIn.onchange=async()=>{ try{await api('client_self_exercise',{exercise_id:ex.id,name:nameIn.value.trim()});toast('Сохранено');}catch{toast('Ошибка');} };
   const setsBox=document.createElement('div'); setsBox.className='cd-sets';
   const step=unit==='сек'?5:2.5;
   local.forEach((s,j)=>{
