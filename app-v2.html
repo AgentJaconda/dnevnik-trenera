@@ -681,7 +681,6 @@
 </nav>
 
 <div class="toast" id="toast"></div>
-<div id="build-badge" style="position:fixed;bottom:60px;right:10px;font-size:10px;color:#555;z-index:1;pointer-events:none;font-family:monospace"></div>
 
 <!-- Модалка: добавить/редактировать клиента -->
 <div class="sheet-overlay" id="clientSheet">
@@ -782,24 +781,6 @@
 </div>
 
 <script>
-const BUILD = 'v0620-a';   /* ← метка сборки, меняется при каждом деплое */
-
-/* Ловим любые JS-ошибки и показываем в тосте */
-window.onerror = (msg, src, line) => {
-  try {
-    const t = document.getElementById('toast');
-    if (t){ t.textContent='⚠️ JS ошибка стр.'+line+': '+String(msg).slice(0,120); t.style.cssText='opacity:1;display:block;pointer-events:none;z-index:9999'; }
-  } catch(x){}
-  return false;
-};
-
-/* Версионная метка в углу + тост при загрузке */
-(function(){
-  const b = document.getElementById('build-badge');
-  if (b) b.textContent = BUILD;
-  setTimeout(()=>{ try { toast(BUILD+' · OK'); } catch(x){} }, 400);
-})();
-
 /* ═══════════ Telegram + тёмная тема ═══════════ */
 const tg = window.Telegram?.WebApp;
 let userName = 'Тренер';
