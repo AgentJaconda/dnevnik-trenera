@@ -642,7 +642,7 @@
       </div>
       <div style="display:flex;gap:10px;margin-bottom:16px">
         <button type="button" id="cmCancelBtn" style="flex:1;border:1px solid var(--line);background:var(--card-2);color:var(--muted);font-family:'Inter';font-size:15px;font-weight:500;padding:14px;border-radius:13px;cursor:pointer">Отмена</button>
-        <button class="sheet-save" id="cmSaveBtn" style="flex:2">Сохранить замер</button>
+        <button class="sheet-save" id="cmSaveBtn" type="button" style="flex:2">Сохранить замер</button>
       </div>
     </div>
     <div id="cmHistory"></div>
@@ -683,12 +683,12 @@
 <div class="sheet-overlay" id="clientSheet">
   <div class="sheet">
     <h3><span id="csTitle">Новый клиент</span><span class="x" onclick="closeSheet('clientSheet')">✕</span></h3>
-    <div class="field"><label>Имя</label><input id="csName" placeholder="Анна Смирнова"></div>
+    <div class="field"><label>Имя</label><input id="csName" placeholder="Анна Смирнова" enterkeyhint="next" autocomplete="off"></div>
     <div class="fg2">
-      <div class="field"><label>Возраст</label><input inputmode="numeric" id="csAge" placeholder="25"></div>
-      <div class="field"><label>Вес, кг</label><input inputmode="decimal" id="csWeight" placeholder="56"></div>
+      <div class="field"><label>Возраст</label><input inputmode="numeric" id="csAge" placeholder="25" enterkeyhint="done"></div>
+      <div class="field"><label>Вес, кг</label><input inputmode="decimal" id="csWeight" placeholder="56" enterkeyhint="done"></div>
     </div>
-    <div class="field"><label>Рост, см</label><input inputmode="numeric" id="csHeight" placeholder="168"></div>
+    <div class="field"><label>Рост, см</label><input inputmode="numeric" id="csHeight" placeholder="168" enterkeyhint="done"></div>
     <div class="field"><label>Цель</label>
       <div class="goal-opts" id="csGoal">
         <div class="goal-opt" data-g="loss">Похудение</div>
@@ -696,7 +696,7 @@
         <div class="goal-opt" data-g="maintain">Форма</div>
       </div>
     </div>
-    <button class="sheet-save" id="csSave">Сохранить</button>
+    <button class="sheet-save" id="csSave" type="button">Сохранить</button>
   </div>
 </div>
 
@@ -711,7 +711,7 @@
       <div class="field"><label>Цена, ₽</label><input inputmode="numeric" id="psPrice" placeholder="28000"></div>
     </div>
     <div class="field"><label>Срок, дней</label><input inputmode="numeric" id="psDays" value="60"></div>
-    <button class="sheet-save" id="psSave">Продать абонемент</button>
+    <button class="sheet-save" id="psSave" type="button">Продать абонемент</button>
   </div>
 </div>
 
@@ -735,7 +735,7 @@
       <div class="field"><label>Цена, ₽</label><input inputmode="numeric" id="ssPrice" placeholder="3500"></div>
       <div class="field" style="display:flex;align-items:flex-end"><label style="display:flex;align-items:center;gap:8px;margin:0 0 13px"><input type="checkbox" id="ssPaid" checked style="width:18px;height:18px;accent-color:#C8A961">уже оплачена</label></div>
     </div>
-    <button class="sheet-save" id="ssSave">Записать тренировку</button>
+    <button class="sheet-save" id="ssSave" type="button">Записать тренировку</button>
   </div>
 </div>
 
@@ -748,7 +748,7 @@
       <div class="field"><label>Новая дата</label><input type="date" id="reschedDate"></div>
       <div class="field"><label>Новое время</label><input type="time" id="reschedTime"></div>
     </div>
-    <button class="sheet-save" id="reschedSave">Перенести</button>
+    <button class="sheet-save" id="reschedSave" type="button">Перенести</button>
   </div>
 </div>
 
@@ -773,7 +773,7 @@
   <div class="sheet">
     <h3><span>Цель по доходу на месяц</span><span class="x" onclick="closeSheet('goalSheet')">✕</span></h3>
     <div class="field"><label>Сумма, ₽</label><input inputmode="numeric" id="goalInput" placeholder="100000"></div>
-    <button class="sheet-save" id="goalSave">Сохранить</button>
+    <button class="sheet-save" id="goalSave" type="button">Сохранить</button>
   </div>
 </div>
 
@@ -1498,6 +1498,13 @@ document.getElementById('progSave').onclick = async ()=>{
 };
 
 /* ─── Редактирование профиля ─── */
+/* Клавиатура убирается тапом вне поля или по Enter в полях профиля */
+['csName','csAge','csWeight','csHeight'].forEach(id=>{
+  const inp = document.getElementById(id);
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); inp.blur(); } });
+});
+addBlurOnOutsideTap(document.getElementById('clientSheet'));
+
 let editingClient = null;
 function editProfile(){
   const c = cardData.client;
