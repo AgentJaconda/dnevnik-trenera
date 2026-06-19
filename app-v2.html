@@ -605,7 +605,7 @@
     <div id="cdNoteWrap" style="display:none">
       <div class="cd-note"><div class="cd-note-lbl">Комментарий тренера</div><div id="cdNoteText"></div></div>
     </div>
-    <div class="sec"><h2 id="cdProgTitle">Программа на сегодня</h2></div>
+    <div class="sec"><h2 id="cdProgTitle">Программа на сегодня</h2><a onclick="cdRefresh()">↺ обновить</a></div>
     <div id="cdProg"></div>
   </div>
 </section>
@@ -640,7 +640,10 @@
         <div class="field"><label>Бедро, см</label><input id="cmInThigh" inputmode="decimal" placeholder="57"></div>
         <div class="field"><label>Бицепс, см</label><input id="cmInArm" inputmode="decimal" placeholder="27"></div>
       </div>
-      <button class="sheet-save" id="cmSaveBtn" style="margin-bottom:16px">Сохранить замер</button>
+      <div style="display:flex;gap:10px;margin-bottom:16px">
+        <button type="button" id="cmCancelBtn" style="flex:1;border:1px solid var(--line);background:var(--card-2);color:var(--muted);font-family:'Inter';font-size:15px;font-weight:500;padding:14px;border-radius:13px;cursor:pointer">Отмена</button>
+        <button class="sheet-save" id="cmSaveBtn" style="flex:2">Сохранить замер</button>
+      </div>
     </div>
     <div id="cmHistory"></div>
   </div>
@@ -1969,6 +1972,8 @@ document.getElementById('wkAddBtn').onclick = openSessForWorkouts;
 
 
 /* ═══════════ Клиентская сторона ═══════════ */
+const fnum = n => n != null ? String(n).replace('.', ',') : '0';
+function debounce(fn, delay){ let t; return function(){ clearTimeout(t); t=setTimeout(fn, delay); }; }
 let clientData = null;
 let cdDate = new Date(); cdDate.setHours(0,0,0,0);
 
@@ -1990,7 +1995,7 @@ function switchToClient(){
 
 function renderClientV2(){
   const c=clientData.client||{};
-  document.getElementById('greeting').textContent=('Привет, '+(c.name||'')).trim()||'Привет';
+  document.getElementById('greeting').textContent=c.name?'Привет, '+c.name:'Привет';
   document.getElementById('subtitle').textContent='Тренер — '+(clientData.trainer_name||'тренер');
 
   const pass=clientData.pass;
@@ -1999,7 +2004,10 @@ function renderClientV2(){
     passWrap.style.display='';
     document.getElementById('cdPassLeft').textContent=pass.left;
     document.getElementById('cdPassTotal').textContent='/'+pass.total;
-    document.getElementById('cdPassBar').style.width=Math.max(0,Math.min(100,Math.round(pass.left/pass.total*100)))+'%';
+    const pct=Math.max(0,Math.min(100,Math.round(pass.left/pass.total*100)));
+    const barEl=document.getElementById('cdPassBar');
+    barEl.style.width=pct+'%';
+    barEl.style.background=pass.left<=2?'var(--red)':'';
     document.getElementById('cdPassNote').innerHTML=pass.valid_until
       ?'до <b>'+new Date(pass.valid_until).toLocaleDateString('ru-RU')+'</b>':'бессрочный';
     document.getElementById('cdPassUsed').textContent=pass.used+' из '+pass.total+' использовано';
@@ -2039,12 +2047,21 @@ function cdRenderStrip(){
 }
 
 async function cdLoadDay(){
+  document.getElementById('cdProg').innerHTML='<p style="text-align:center;color:var(--faint);padding:24px 0;font-size:14px">Загрузка…</p>';
   try {
     const res=await api('client_self_state',{for_date:cdDate.toLocaleDateString('sv'),...clientDayBounds()});
     clientData={...clientData,...res};
     cdRenderStrip();
     cdRenderProgram(res.program, res.exercises);
   } catch(e){ console.error(e); }
+}
+
+async function cdRefresh(){
+  document.getElementById('cdProg').innerHTML='<p style="text-align:center;color:var(--faint);padding:24px 0;font-size:14px">Загрузка…</p>';
+  try {
+    const res=await api('bootstrap',{...dayBounds(),...clientDayBounds()});
+    if (res.role==='client'){ clientData=res; renderClientV2(); toast('Данные обновлены'); }
+  } catch{ toast('Ошибка обновления'); }
 }
 
 function cdRenderProgram(program, exercises){
@@ -2086,6 +2103,7 @@ function cdExCard(ex, num){
   }
   const local=sets.map(s=>({plan_w:s.plan_w,plan_reps:s.plan_reps,fact_w:s.fact_w??s.plan_w,done:!!s.done}));
   async function persist(){ try{await api('client_self_exercise',{exercise_id:ex.id,sets:local}); toast('Сохранено · тренер увидит');}catch{toast('Ошибка');} }
+  const dPersist=debounce(persist,350);
   nameIn.onchange=async()=>{ try{await api('client_self_exercise',{exercise_id:ex.id,name:nameIn.value.trim()});toast('Сохранено');}catch{toast('Ошибка');} };
   const setsBox=document.createElement('div'); setsBox.className='cd-sets';
   const step=unit==='сек'?5:2.5;
@@ -2098,9 +2116,9 @@ function cdExCard(ex, num){
     const bp=document.createElement('button'); bp.textContent='+'; bp.type='button';
     const unitEl=document.createElement('small'); unitEl.textContent=unit;
     wBox.append(bm,inp,bp,unitEl);
-    bm.onclick=()=>{ const v=parseFloat(String(inp.value).replace(',','.'))||0; const nv=Math.max(0,v-step); inp.value=fnum(nv); s.fact_w=nv; persist(); };
-    bp.onclick=()=>{ const v=parseFloat(String(inp.value).replace(',','.'))||0; const nv=v+step; inp.value=fnum(nv); s.fact_w=nv; persist(); };
-    inp.onchange=()=>{ s.fact_w=parseFloat(String(inp.value).replace(',','.'))||0; inp.value=fnum(s.fact_w); persist(); };
+    bm.onclick=()=>{ const v=parseFloat(String(inp.value).replace(',','.'))||0; const nv=Math.max(0,v-step); inp.value=fnum(nv); s.fact_w=nv; dPersist(); };
+    bp.onclick=()=>{ const v=parseFloat(String(inp.value).replace(',','.'))||0; const nv=v+step; inp.value=fnum(nv); s.fact_w=nv; dPersist(); };
+    inp.onchange=()=>{ s.fact_w=parseFloat(String(inp.value).replace(',','.'))||0; inp.value=fnum(s.fact_w); dPersist(); };
     const chk=document.createElement('button'); chk.type='button'; chk.className='cd-chk'+(s.done?' on':'');
     chk.innerHTML='<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg>';
     chk.onclick=()=>{ chk.classList.toggle('on'); s.done=chk.classList.contains('on'); persist(); };
@@ -2129,11 +2147,13 @@ function cmRender(){
   wCard.style.display='';
   const first=ms[0],last=ms[ms.length-1],prev=ms[ms.length-2]||first;
   document.getElementById('cmWNow').textContent=cmFNum(last.w);
-  const sgn=v=>(v>0?'+':'−')+cmFNum(Math.abs(v).toFixed(1))+' кг';
+  const sgn=v=>v===0?'0 кг':(v>0?'+':'−')+cmFNum(Math.abs(v).toFixed(1))+' кг';
   const dA=last.w-first.w,dL=last.w-prev.w;
   const dAEl=document.getElementById('cmDAll'),dLEl=document.getElementById('cmDLast');
   dAEl.textContent=sgn(dA); dAEl.style.color=dA<=0?'var(--green)':'var(--red)';
-  dLEl.textContent=sgn(dL); dLEl.style.color=dL<=0?'var(--green)':'var(--red)';
+  const dLParent=dLEl.parentElement;
+  if (ms.length<2){ dLParent.style.display='none'; }
+  else { dLParent.style.display=''; dLEl.textContent=sgn(dL); dLEl.style.color=dL<=0?'var(--green)':'var(--red)'; }
   document.getElementById('cmDFirst').textContent=cmFDate(first.date);
   document.getElementById('cmDLastD').textContent=cmFDate(last.date);
   const svg=document.getElementById('cmChart');
@@ -2165,6 +2185,7 @@ document.getElementById('cmAddBtn').onclick=()=>{
   f.style.display=f.style.display==='none'?'':'none';
   if (f.style.display!=='none') document.getElementById('cmInW').focus();
 };
+document.getElementById('cmCancelBtn').onclick=()=>{ document.getElementById('cmForm').style.display='none'; };
 document.getElementById('cmSaveBtn').onclick=async()=>{
   const val=id=>{const v=parseFloat(String(document.getElementById(id).value).replace(',','.')); return isNaN(v)?null:v;};
   const values={},map={cmInW:'weight',cmInWaist:'waist',cmInChest:'chest',cmInHips:'hips',cmInThigh:'thigh',cmInArm:'arm'};
@@ -2194,6 +2215,18 @@ async function boot(){
       document.getElementById('greeting').textContent = `Привет, ${userName} 👋`;
       renderHome();
       renderClients();
+    } else if (res.role === 'client_taken'){
+      document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+      document.getElementById('nav').style.display='none';
+      document.getElementById('bellBtn').style.display='none';
+      document.getElementById('greeting').textContent='Приглашение недействительно';
+      document.getElementById('subtitle').textContent='';
+      const el=document.createElement('div');
+      el.style.cssText='padding:48px 24px;text-align:center;max-width:380px;margin:0 auto';
+      el.innerHTML=`<svg viewBox="0 0 24 24" width="52" height="52" fill="none" stroke="var(--faint)" stroke-width="1.4" style="margin-bottom:18px"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 018 0v4"/></svg>
+        <h2 style="font-size:19px;font-weight:700;margin-bottom:12px">Ссылка уже использована</h2>
+        <p style="font-size:14px;color:var(--muted);line-height:1.65">Это приглашение привязано к другому аккаунту Telegram. Попроси тренера прислать новую ссылку.</p>`;
+      document.body.appendChild(el);
     } else if (res.role === 'client'){
       real = true;
       clientData = res;
