@@ -414,6 +414,23 @@
   .cm-hist-top b{font-size:16px;font-weight:700}
   .cm-hist-top time{font-size:12.5px;color:var(--muted)}
   .cm-hist-body{font-size:12.5px;color:var(--faint);line-height:1.6}
+
+  /* ─── Финансы ─── */
+  .fin-mnav{display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:14px;padding:10px 14px;margin-bottom:16px}
+  .fin-mnav button{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;padding:4px 10px;line-height:1;border-radius:8px;transition:color .15s}
+  .fin-mnav button:disabled{opacity:.3;cursor:default}
+  .fin-icard{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px 20px;margin-bottom:14px}
+  .fin-icard .fi-lbl{font-size:11.5px;font-weight:600;color:var(--muted);letter-spacing:.06em;margin-bottom:6px}
+  .fin-icard .fi-big{font-size:26px;font-weight:700;color:var(--text);line-height:1.1}
+  .fin-icard .fi-big span{font-size:17px;color:var(--muted);font-weight:400}
+  .fin-icard .fi-pct{font-size:20px;font-weight:700;color:var(--gold)}
+  .fin-icard .fi-sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .fin-bar{height:8px;background:var(--card-2);border-radius:4px;overflow:hidden;position:relative;margin-top:2px}
+  .fin-bar i{position:absolute;inset:0;background:var(--grad-gold);border-radius:4px;width:0%;transition:width .5s ease}
+  .fin-comp{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:7px 13px;border-radius:10px;font-weight:500}
+  .fin-comp.up{background:rgba(143,192,122,.12);color:var(--green)}
+  .fin-comp.dn{background:rgba(201,122,106,.12);color:var(--red)}
+  .fin-comp.flat{background:var(--card);color:var(--muted)}
 </style>
 </head>
 <body>
@@ -523,7 +540,26 @@
     <button class="add-btn" id="paSellBtn" style="margin-top:14px">+ Продать абонемент</button>
   </div>
 </section>
-<section class="screen" id="scr-finance"><div class="placeholder"><h2>Финансы</h2><p>Скоро — в новом стиле.</p></div></section>
+<section class="screen" id="scr-finance">
+  <div class="wrap">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <div onclick="show('scr-home')" style="background:var(--card-2);border-radius:10px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text);flex:none">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+      </div>
+      <h1 style="margin:0;font-size:22px;font-weight:700">Финансы</h1>
+    </div>
+    <div class="fin-mnav">
+      <button id="finPrev">‹</button>
+      <span id="finMonthLabel" style="font-size:15px;font-weight:600;color:var(--text)"></span>
+      <button id="finNext">›</button>
+    </div>
+    <div class="fin-icard" id="finIncomeCard"></div>
+    <div class="cc-stats" id="finStats" style="margin-bottom:14px"></div>
+    <div id="finCompareWrap" style="margin-bottom:18px"></div>
+    <div class="sec" style="margin-bottom:12px"><h2>История оплат</h2></div>
+    <div id="finList"><p class="empty-pane">Загрузка…</p></div>
+  </div>
+</section>
 <section class="screen" id="scr-more">
   <div class="wrap">
     <div class="more-prof">
@@ -851,6 +887,7 @@ function show(id){
   }
   if (id==='scr-workouts' && typeof loadWorkouts==='function') loadWorkouts();
   if (id==='scr-passes' && typeof loadPasses==='function') loadPasses();
+  if (id==='scr-finance' && typeof loadFinance==='function') loadFinance();
   if (id==='scr-more' && typeof renderMore==='function') renderMore();
 }
 document.querySelectorAll('#nav button').forEach(b=>{
@@ -1868,6 +1905,131 @@ function soonToast(){ toast('Эта часть — <b>скоро</b> 🔧'); }
 
 document.getElementById('clientSearch').oninput = e=>{ clientFilter = e.target.value; renderClients(); };
 
+
+/* ═══════════ Экран «Финансы» ═══════════ */
+let finMonth = (()=>{ const d=new Date(); return new Date(d.getFullYear(),d.getMonth(),1); })();
+let finData = null;
+
+function finMonthRange(d){
+  const from = new Date(d.getFullYear(), d.getMonth(), 1);
+  const to   = new Date(d.getFullYear(), d.getMonth()+1, 1);
+  return { from: from.toISOString(), to: to.toISOString() };
+}
+function finUpdateNav(){
+  const now = new Date();
+  const isCur = finMonth.getFullYear()===now.getFullYear() && finMonth.getMonth()===now.getMonth();
+  document.getElementById('finMonthLabel').textContent =
+    finMonth.toLocaleDateString('ru-RU',{month:'long',year:'numeric'}).replace(/^./,c=>c.toUpperCase());
+  document.getElementById('finNext').disabled = isCur;
+}
+document.getElementById('finPrev').onclick = ()=>{
+  finMonth = new Date(finMonth.getFullYear(), finMonth.getMonth()-1, 1);
+  finUpdateNav(); loadFinance();
+};
+document.getElementById('finNext').onclick = ()=>{
+  const now=new Date();
+  if (finMonth.getFullYear()===now.getFullYear() && finMonth.getMonth()===now.getMonth()) return;
+  finMonth = new Date(finMonth.getFullYear(), finMonth.getMonth()+1, 1);
+  finUpdateNav(); loadFinance();
+};
+
+async function loadFinance(){
+  finUpdateNav();
+  if (!real){
+    document.getElementById('finIncomeCard').innerHTML = '<p class="empty-pane" style="margin:0;text-align:left">Нет данных вне Telegram</p>';
+    document.getElementById('finStats').innerHTML='';
+    document.getElementById('finCompareWrap').innerHTML='';
+    document.getElementById('finList').innerHTML='';
+    return;
+  }
+  document.getElementById('finList').innerHTML = '<p class="empty-pane">Загрузка…</p>';
+  document.getElementById('finIncomeCard').innerHTML = '';
+  const { from, to } = finMonthRange(finMonth);
+  try {
+    finData = await api('finance', { from, to });
+    renderFinance();
+  } catch(e){ console.error('finance',e); toast('Не удалось загрузить финансы'); }
+}
+
+function renderFinance(){
+  if (!finData) return;
+  const { income=0, done=0, items=[], prev_income=0, avg=0 } = finData;
+  const goal = homeData.home?.month_goal || 0;
+  const now = new Date();
+  const isCur = finMonth.getFullYear()===now.getFullYear() && finMonth.getMonth()===now.getMonth();
+
+  // ─ карточка дохода
+  const ic = document.getElementById('finIncomeCard');
+  if (goal > 0 && isCur){
+    const pct = Math.min(Math.round(income/goal*100), 100);
+    ic.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px">
+        <div>
+          <div class="fi-lbl">ДОХОД ЗА МЕСЯЦ</div>
+          <div class="fi-big num">${fmtMoney(income)} <span>₽</span></div>
+        </div>
+        <div style="text-align:right">
+          <div class="fi-pct num">${pct}%</div>
+          <div class="fi-sub">из ${fmtMoney(goal)} ₽</div>
+        </div>
+      </div>
+      <div class="fin-bar"><i id="finGoalBar"></i></div>`;
+    setTimeout(()=>{ const b=document.getElementById('finGoalBar'); if(b) b.style.width=pct+'%'; }, 60);
+  } else {
+    ic.innerHTML = `
+      <div class="fi-lbl">ДОХОД ЗА МЕСЯЦ</div>
+      <div class="fi-big num">${fmtMoney(income)} <span>₽</span></div>
+      ${isCur && !goal
+        ? `<div style="font-size:12px;color:var(--gold);margin-top:10px;cursor:pointer"
+            onclick="show('scr-home');setTimeout(()=>document.getElementById('goalBlock').click(),200)">+ Задать цель на месяц →</div>`
+        : ''}`;
+  }
+
+  // ─ сводка
+  document.getElementById('finStats').innerHTML = `
+    <div class="cc-stat"><b class="num">${avg ? fmtMoney(avg) : '—'}</b><span>средний чек</span></div>
+    <div class="cc-stat"><b class="num">${items.length}</b><span>оплат</span></div>
+    <div class="cc-stat"><b class="num">${done}</b><span>тренировок</span></div>`;
+
+  // ─ сравнение с прошлым месяцем
+  const cw = document.getElementById('finCompareWrap');
+  if (prev_income > 0 || income > 0){
+    const diff = income - prev_income;
+    const pctD = prev_income > 0 ? Math.round(Math.abs(diff)/prev_income*100) : null;
+    const cls = diff > 0 ? 'up' : diff < 0 ? 'dn' : 'flat';
+    const icon = diff > 0 ? '↑' : diff < 0 ? '↓' : '→';
+    const sign = diff > 0 ? '+' : diff < 0 ? '−' : '';
+    const amt = diff !== 0 ? ` ${sign}${fmtMoney(Math.abs(diff))} ₽` : '';
+    const pctTxt = pctD !== null && pctD > 0 ? ` (${pctD}%)` : '';
+    const base = diff === 0 ? 'Как в прошлом месяце' : `${icon}${amt}${pctTxt} к прошлому месяцу`;
+    cw.innerHTML = `<span class="fin-comp ${cls}">${base}</span>`;
+  } else cw.innerHTML = '';
+
+  // ─ список оплат
+  const list = document.getElementById('finList');
+  if (!items.length){
+    list.innerHTML = '<p class="empty-pane">Оплат в этом месяце нет</p>';
+    return;
+  }
+  let html = '', lastDate = '';
+  items.forEach(it=>{
+    const ds = new Date(it.date+'T12:00:00').toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
+    if (ds !== lastDate){
+      html += `<div style="font-size:12px;color:var(--faint);margin:${lastDate?'16px':'0'} 0 8px;font-weight:500">${ds}</div>`;
+      lastDate = ds;
+    }
+    const cname = it.client_name || '—';
+    const sub = it.type==='pass'
+      ? `Абонемент · ${it.sessions||'?'} тренировок`
+      : 'Разовая тренировка';
+    html += `<div class="row-item">
+      <div class="cl-ava" style="width:36px;height:36px;font-size:14px;flex:none">${initial(cname)}</div>
+      <div class="rmain"><b>${cname}</b><span>${sub}</span></div>
+      <div class="rsum num">${fmtMoney(it.sum)} ₽</div>
+    </div>`;
+  });
+  list.innerHTML = html;
+}
 
 /* ═══════════ Экран «Тренировки» ═══════════ */
 const STATUS_LABEL = { planned:'запланирована', done:'проведена', cancelled:'отменена', no_show:'неявка' };
