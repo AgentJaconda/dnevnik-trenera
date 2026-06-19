@@ -778,6 +778,15 @@
 </div>
 
 <script>
+/* Ловим любые JS-ошибки и показываем в тосте */
+window.onerror = (msg, src, line) => {
+  try {
+    const t = document.getElementById('toast');
+    if (t){ t.textContent='⚠️ JS ошибка стр.'+line+': '+String(msg).slice(0,120); t.style.cssText='opacity:1;display:block;pointer-events:none'; }
+  } catch(x){}
+  return false;
+};
+
 /* ═══════════ Telegram + тёмная тема ═══════════ */
 const tg = window.Telegram?.WebApp;
 let userName = 'Тренер';
@@ -798,6 +807,46 @@ function toast(html){
   toastEl.innerHTML = html; toastEl.classList.add('show');
   toastTimer = setTimeout(()=>toastEl.classList.remove('show'), 2600);
 }
+
+/* ═══ Сохранение профиля клиента — делегирование через document.
+     Ставится РАНО, до любого кода который может упасть с ошибкой.
+     Работает даже если позже JS сломается. ═══ */
+document.addEventListener('click', async (e)=>{
+  if (!e.target.closest('#csSave')) return;
+  toast('⏳ Сохраняем…');
+  const name = (document.getElementById('csName').value||'').trim();
+  if (!name){ toast('Введите имя'); return; }
+  const goalEl = document.querySelector('#csGoal .goal-opt.on');
+  const payload = {
+    name,
+    age: document.getElementById('csAge').value || null,
+    weight_kg: document.getElementById('csWeight').value || null,
+    height_cm: document.getElementById('csHeight').value || null,
+    goal: goalEl ? goalEl.dataset.g : null,
+  };
+  try {
+    if (typeof editingClient !== 'undefined' && editingClient){
+      const res = await api('client_set_profile', { client_id: editingClient, ...payload });
+      if (Array.isArray(myClients)){
+        const i = myClients.findIndex(c=>c.id===editingClient);
+        if (i>=0) myClients[i] = { ...myClients[i], ...res.client };
+      }
+      if (typeof cardData !== 'undefined' && cardData){
+        cardData.client = { ...cardData.client, ...res.client };
+        renderCard();
+      }
+      toast('Профиль сохранён');
+    } else {
+      const res = await api('client_add', { name });
+      if (res.client && (payload.age||payload.weight_kg||payload.height_cm||payload.goal)){
+        await api('client_set_profile', { client_id: res.client.id, ...payload });
+      }
+      toast(`Клиент <b>${name}</b> добавлен`);
+      await reloadClients();
+    }
+    closeSheet('clientSheet');
+  } catch(err){ toast('❌ Ошибка: '+(err.message||JSON.stringify(err))); console.error('csSave',err); }
+});
 
 /* ═══════════ Навигация ═══════════ */
 function show(id){
@@ -1531,41 +1580,7 @@ document.querySelectorAll('#csGoal .goal-opt').forEach(o=>{
     o.classList.add('on'); csGoalVal = o.dataset.g;
   };
 });
-document.getElementById('csSave').onclick = async ()=>{
-  toast('⏳ Сохраняем…');
-  const name = document.getElementById('csName').value.trim();
-  if (!name){ toast('Введите имя'); return; }
-  const goalEl = document.querySelector('#csGoal .goal-opt.on');
-  const payload = {
-    name,
-    age: document.getElementById('csAge').value || null,
-    weight_kg: document.getElementById('csWeight').value || null,
-    height_cm: document.getElementById('csHeight').value || null,
-    goal: goalEl ? goalEl.dataset.g : null,
-  };
-  toast(`🔍 editingClient=${editingClient||'null'} name=${name}`);
-  try {
-    if (editingClient){
-      const res = await api('client_set_profile', { client_id: editingClient, ...payload });
-      toast(`✅ OK age=${res.client?.age} w=${res.client?.weight_kg}`);
-      // обновим в карточке и списке
-      const i = myClients.findIndex(c=>c.id===editingClient);
-      if (i>=0) myClients[i] = { ...myClients[i], ...res.client };
-      if (cardData) { cardData.client = { ...cardData.client, ...res.client }; renderCard(); }
-      toast('Профиль сохранён');
-    } else {
-      toast('⚠️ editingClient пуст — создаётся новый клиент');
-      const res = await api('client_add', { name });
-      // досохраним доп. поля
-      if (res.client && (payload.age||payload.weight_kg||payload.height_cm||payload.goal)){
-        await api('client_set_profile', { client_id: res.client.id, ...payload });
-      }
-      toast(`Клиент <b>${name}</b> добавлен`);
-      await reloadClients();
-    }
-    closeSheet('clientSheet');
-  } catch(e){ toast('❌ Ошибка: '+(e.message||JSON.stringify(e))); console.error('csSave',e); }
-};
+/* csSave handler перенесён наверх через event delegation (см. начало скрипта) */
 
 /* ─── Продажа абонемента ─── */
 function openPassSheet(){
