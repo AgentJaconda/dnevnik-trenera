@@ -318,7 +318,7 @@
     font-size:19px;cursor:pointer;font-family:'Inter'}
   .stepper button:active{background:rgba(200,169,97,.12)}
   .stepper input{flex:1;width:100%;min-width:0;text-align:center;background:none;border:none;
-    color:var(--text);font-family:'Inter';font-size:15px;font-weight:600}
+    color:var(--text);font-family:'Inter';font-size:16px;font-weight:600}
   .stepper input:focus{outline:none}
   .gsec-title{font-size:14px;font-weight:600;color:var(--gold);margin:16px 0 9px}
   .addex{display:block;width:100%;border:1px dashed var(--line);background:transparent;color:var(--gold);
@@ -1429,7 +1429,9 @@ function progExCard(ex){
   const num=document.createElement('span'); num.className='exq-num'; num.textContent=progEx.indexOf(ex)+1;
   const name=document.createElement('input'); name.className='exq-name';
   name.placeholder='Название упражнения'; name.value=ex.name;
+  name.setAttribute('enterkeyhint','done'); name.setAttribute('autocomplete','off');
   name.oninput=()=>{ ex.name=name.value; };
+  name.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); name.blur(); } });
   const del=document.createElement('div'); del.className='exq-del';
   del.innerHTML='<svg viewBox="0 0 24 24"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-9 0l1 13a1 1 0 001 1h6a1 1 0 001-1l1-13"/></svg>';
   del.onclick=()=>{ progEx.splice(progEx.indexOf(ex),1); progRenderList(); };
@@ -1446,12 +1448,14 @@ function progExCard(ex){
 }
 function progStepper(ex,f,step,min){
   const d=document.createElement('div'); d.className='stepper';
-  d.innerHTML='<button type="button">−</button><input type="text" inputmode="decimal"><button type="button">+</button>';
+  const iMode=f==='w'?'decimal':'numeric';
+  d.innerHTML=`<button type="button">−</button><input type="text" inputmode="${iMode}" enterkeyhint="done"><button type="button">+</button>`;
   const [mi,pl]=d.querySelectorAll('button'); const inp=d.querySelector('input');
   const show=()=>inp.value=pnum(ex[f]); show();
   const set=v=>{ ex[f]=Math.max(min, Math.round(v*10)/10); show(); progSummary(); };
   mi.onclick=()=>set(ex[f]-step); pl.onclick=()=>set(ex[f]+step);
   inp.onchange=()=>set(parseFloat(inp.value.replace(',','.'))||min);
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); inp.blur(); } });
   return d;
 }
 function progAddEx(group){
@@ -2095,6 +2099,8 @@ function cdExCard(ex, num){
   const head=document.createElement('div'); head.className='cd-ex-head';
   const numEl=document.createElement('div'); numEl.className='cd-ex-num'; numEl.textContent=num;
   const nameIn=document.createElement('input'); nameIn.className='cd-ex-name'; nameIn.value=ex.name; nameIn.type='text';
+  nameIn.setAttribute('enterkeyhint','done'); nameIn.setAttribute('autocomplete','off');
+  nameIn.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); nameIn.blur(); } });
   head.append(numEl,nameIn); card.appendChild(head);
   if (sets.length){
     const meta=document.createElement('div'); meta.className='cd-ex-meta';
@@ -2113,6 +2119,8 @@ function cdExCard(ex, num){
     const wBox=document.createElement('div'); wBox.className='cd-set-w';
     const bm=document.createElement('button'); bm.textContent='−'; bm.type='button';
     const inp=document.createElement('input'); inp.type='text'; inp.inputMode='decimal'; inp.value=fnum(s.fact_w??0);
+    inp.setAttribute('enterkeyhint','done');
+    inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); inp.blur(); } });
     const bp=document.createElement('button'); bp.textContent='+'; bp.type='button';
     const unitEl=document.createElement('small'); unitEl.textContent=unit;
     wBox.append(bm,inp,bp,unitEl);
@@ -2199,6 +2207,23 @@ document.getElementById('cmSaveBtn').onclick=async()=>{
     cmRender(); toast('Замер сохранён · тренер увидит динамику');
   } catch{ toast('Ошибка сохранения'); }
 };
+
+/* Убрать клавиатуру по тапу вне поля */
+function addBlurOnOutsideTap(el){
+  el.addEventListener('touchstart', e=>{
+    if (!e.target.closest('input,textarea,button,a,label,.tab,.libchip,.day,.exq-del')) {
+      const a=document.activeElement;
+      if (a && (a.tagName==='INPUT' || a.tagName==='TEXTAREA')) a.blur();
+    }
+  }, {passive:true});
+}
+addBlurOnOutsideTap(document.getElementById('progEditor'));
+addBlurOnOutsideTap(document.getElementById('scr-cdiary'));
+addBlurOnOutsideTap(document.getElementById('scr-cmeasure'));
+document.querySelectorAll('#cmForm input').forEach(inp=>{
+  inp.setAttribute('enterkeyhint','done');
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); inp.blur(); } });
+});
 
 async function boot(){
   setDate();
