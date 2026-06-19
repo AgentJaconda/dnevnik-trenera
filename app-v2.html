@@ -353,6 +353,64 @@
   .switch i:before{content:"";position:absolute;width:21px;height:21px;border-radius:50%;background:var(--faint);top:2px;left:2px;transition:.2s}
   .switch input:checked + i{background:var(--gold-deep);border-color:var(--gold-deep)}
   .switch input:checked + i:before{background:#1a1407;transform:translateX(19px)}
+
+  /* ─── Клиентская сторона ─── */
+  .cd-pass{background:var(--card);border:1px solid var(--gold-deep);border-radius:16px;padding:16px;margin-bottom:14px}
+  .cd-pass-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+  .cd-pass-val{font-size:34px;font-weight:700;color:var(--gold);line-height:1}
+  .cd-pass-val small{font-size:17px;color:var(--muted);font-weight:400}
+  .cd-bar{height:6px;background:var(--card-2);border-radius:4px;overflow:hidden;position:relative;margin:10px 0 5px}
+  .cd-bar i{position:absolute;inset:0;background:var(--grad-gold);border-radius:4px;width:0%}
+  .cd-kbju{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin-bottom:14px}
+  .cd-kbju-lbl{font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:10px;text-transform:uppercase;letter-spacing:.04em}
+  .cd-kj-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .cd-kj-cell{background:var(--card-2);border-radius:11px;padding:10px 6px;text-align:center}
+  .cd-kj-cell b{font-size:18px;font-weight:700;display:block}
+  .cd-kj-cell span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .cd-note{background:var(--card);border:1px solid var(--line-soft);border-left:3px solid var(--gold-deep);border-radius:14px;padding:13px 15px;margin-bottom:14px;font-size:14px;line-height:1.55;color:var(--text)}
+  .cd-note-lbl{font-size:11px;color:var(--gold);font-weight:600;margin-bottom:5px;text-transform:uppercase;letter-spacing:.05em}
+  .cd-gsec{font-size:12px;font-weight:700;color:var(--gold);margin:18px 0 8px;letter-spacing:.05em;text-transform:uppercase}
+  .cd-ex{background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:10px;overflow:hidden}
+  .cd-ex-head{display:flex;align-items:center;gap:10px;padding:13px 15px 9px}
+  .cd-ex-num{width:24px;height:24px;border-radius:7px;background:var(--card-2);color:var(--gold);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+  .cd-ex-name{flex:1;font-size:16px;font-weight:600;border:none;background:none;color:var(--text);font-family:'Inter';min-width:0;padding:4px 6px;margin:-4px -6px;border-radius:8px}
+  .cd-ex-name:focus{outline:none;background:var(--card-2)}
+  .cd-ex-meta{font-size:12px;color:var(--faint);padding:0 15px 10px 49px}
+  .cd-ex-meta b{color:var(--muted);font-weight:500}
+  .cd-sets{border-top:1px solid var(--line-soft)}
+  .cd-set{display:grid;grid-template-columns:36px 1fr auto;align-items:center;gap:10px;padding:9px 15px;border-bottom:1px solid var(--line-soft)}
+  .cd-set:last-child{border:none}
+  .cd-set .slbl{font-size:12px;color:var(--faint)}
+  .cd-set-w{display:flex;align-items:center;background:var(--card-2);border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+  .cd-set-w button{width:34px;height:38px;background:none;border:none;color:var(--gold);font-size:18px;cursor:pointer;font-family:'Inter';flex:none}
+  .cd-set-w button:active{background:rgba(200,169,97,.12)}
+  .cd-set-w input{width:52px;text-align:center;background:none;border:none;color:var(--text);font-family:'Inter';font-size:16px;font-weight:600}
+  .cd-set-w input:focus{outline:none}
+  .cd-set-w small{font-size:11px;color:var(--muted);padding-right:8px}
+  .cd-chk{width:34px;height:34px;border-radius:10px;border:1.5px solid var(--line);background:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:transparent;flex:none;transition:.12s}
+  .cd-chk.on{background:var(--green);border-color:var(--green);color:#fff}
+  .cd-chk svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.5}
+  .cm-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px}
+  .cm-w-top{display:flex;align-items:center;justify-content:space-between}
+  .cm-w-val{font-size:34px;font-weight:700;line-height:1}
+  .cm-w-val small{font-size:16px;color:var(--muted);font-weight:400}
+  .cm-deltas{display:flex;flex-direction:column;gap:5px;align-items:flex-end}
+  .cm-deltas>div{font-size:12px;display:flex;gap:5px;align-items:center}
+  .cm-deltas span{color:var(--faint)}
+  .cm-deltas b{font-weight:600}
+  .cm-dates{display:flex;justify-content:space-between;font-size:11.5px;color:var(--faint);margin-top:6px}
+  .cm-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:14px}
+  .cm-cell{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px 14px}
+  .cm-cell span{font-size:12px;color:var(--muted);display:block;margin-bottom:3px}
+  .cm-cell b{font-size:15px;font-weight:600}
+  .cm-cell b i{font-style:normal;font-size:12px;margin-left:5px}
+  .cm-cell b i.dn{color:var(--green)}
+  .cm-cell b i.up{color:var(--red)}
+  .cm-hist-item{background:var(--card);border:1px solid var(--line);border-radius:13px;padding:13px 15px;margin-bottom:9px}
+  .cm-hist-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+  .cm-hist-top b{font-size:16px;font-weight:700}
+  .cm-hist-top time{font-size:12.5px;color:var(--muted)}
+  .cm-hist-body{font-size:12.5px;color:var(--faint);line-height:1.6}
 </style>
 </head>
 <body>
@@ -511,6 +569,80 @@
         <svg class="chev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>
       </div>
     </div>
+  </div>
+</section>
+
+<!-- ════════ КЛИЕНТ: Дневник ════════ -->
+<section class="screen" id="scr-cdiary">
+  <div class="wrap" style="padding-top:6px">
+    <div id="cdPassWrap" style="display:none">
+      <div class="cd-pass">
+        <div class="cd-pass-top">
+          <div>
+            <div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:6px">МОЙ АБОНЕМЕНТ</div>
+            <div class="cd-pass-val num"><span id="cdPassLeft">0</span><small id="cdPassTotal">/0</small></div>
+          </div>
+          <div id="cdPassNote" style="text-align:right;font-size:13px;color:var(--muted);line-height:1.5"></div>
+        </div>
+        <div class="cd-bar"><i id="cdPassBar"></i></div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--faint)">
+          <span>осталось тренировок</span><span id="cdPassUsed"></span>
+        </div>
+      </div>
+    </div>
+    <div id="cdKbjuWrap" style="display:none">
+      <div class="cd-kbju">
+        <div class="cd-kbju-lbl">Цели на день от тренера</div>
+        <div class="cd-kj-grid">
+          <div class="cd-kj-cell"><b class="num" id="cdKcal">—</b><span>ккал</span></div>
+          <div class="cd-kj-cell"><b class="num" id="cdProtein">—</b><span>белки</span></div>
+          <div class="cd-kj-cell"><b class="num" id="cdFat">—</b><span>жиры</span></div>
+          <div class="cd-kj-cell"><b class="num" id="cdCarbs">—</b><span>углеводы</span></div>
+        </div>
+      </div>
+    </div>
+    <div id="cdStrip" class="days" style="padding:4px 0 14px"></div>
+    <div id="cdNoteWrap" style="display:none">
+      <div class="cd-note"><div class="cd-note-lbl">Комментарий тренера</div><div id="cdNoteText"></div></div>
+    </div>
+    <div class="sec"><h2 id="cdProgTitle">Программа на сегодня</h2></div>
+    <div id="cdProg"></div>
+  </div>
+</section>
+
+<!-- ════════ КЛИЕНТ: Замеры ════════ -->
+<section class="screen" id="scr-cmeasure">
+  <div class="wrap" style="padding-top:6px">
+    <div class="sec"><h2>Замеры</h2></div>
+    <div class="cm-card" id="cmWeightCard" style="display:none">
+      <div class="cm-w-top">
+        <div>
+          <div style="font-size:11.5px;color:var(--muted);font-weight:600;margin-bottom:6px">ВЕС СЕЙЧАС</div>
+          <div class="cm-w-val num"><span id="cmWNow">—</span> <small>кг</small></div>
+        </div>
+        <div class="cm-deltas">
+          <div><span>за всё время</span><b id="cmDAll" class="num"></b></div>
+          <div><span>с прошлого</span><b id="cmDLast" class="num"></b></div>
+        </div>
+      </div>
+      <svg id="cmChart" viewBox="0 0 340 72" width="100%" height="72" preserveAspectRatio="none" style="margin-top:12px;display:block"></svg>
+      <div class="cm-dates"><span id="cmDFirst"></span><span id="cmDLastD"></span></div>
+    </div>
+    <div class="sec" style="margin-top:6px"><h2>Объёмы тела</h2></div>
+    <div id="cmGrid" class="cm-grid"></div>
+    <button class="add-btn" id="cmAddBtn" style="margin:4px 0 14px">+ Записать замер</button>
+    <div id="cmForm" style="display:none">
+      <div class="fg2">
+        <div class="field"><label>Вес, кг</label><input id="cmInW" inputmode="decimal" placeholder="64,9"></div>
+        <div class="field"><label>Талия, см</label><input id="cmInWaist" inputmode="decimal" placeholder="70"></div>
+        <div class="field"><label>Грудь, см</label><input id="cmInChest" inputmode="decimal" placeholder="91"></div>
+        <div class="field"><label>Бёдра, см</label><input id="cmInHips" inputmode="decimal" placeholder="98"></div>
+        <div class="field"><label>Бедро, см</label><input id="cmInThigh" inputmode="decimal" placeholder="57"></div>
+        <div class="field"><label>Бицепс, см</label><input id="cmInArm" inputmode="decimal" placeholder="27"></div>
+      </div>
+      <button class="sheet-save" id="cmSaveBtn" style="margin-bottom:16px">Сохранить замер</button>
+    </div>
+    <div id="cmHistory"></div>
   </div>
 </section>
 
@@ -1836,6 +1968,217 @@ function ssSyncPay(c){
 document.getElementById('wkAddBtn').onclick = openSessForWorkouts;
 
 
+/* ═══════════ Клиентская сторона ═══════════ */
+let clientData = null;
+let cdDate = new Date(); cdDate.setHours(0,0,0,0);
+
+function clientDayBounds(){
+  const s=new Date(); s.setDate(s.getDate()-7); s.setHours(0,0,0,0);
+  const e=new Date(); e.setDate(e.getDate()+14); e.setHours(23,59,59,0);
+  return { days_from:s.toLocaleDateString('sv'), days_to:e.toLocaleDateString('sv') };
+}
+
+function switchToClient(){
+  document.getElementById('bellBtn').style.display='none';
+  const nav=document.getElementById('nav');
+  nav.innerHTML=`
+    <button class="on" data-s="scr-cdiary"><svg viewBox="0 0 24 24"><path d="M3 8h4v8H3zM17 8h4v8h-4zM7 12h10M7 9.5v5M17 9.5v5"/></svg><span>Дневник</span></button>
+    <button data-s="scr-cmeasure"><svg viewBox="0 0 24 24"><path d="M4 19V10M10 19V5M16 19v-7M21 19H3"/></svg><span>Замеры</span></button>`;
+  nav.querySelectorAll('button').forEach(b=>{ b.onclick=()=>show(b.dataset.s); });
+  show('scr-cdiary');
+}
+
+function renderClientV2(){
+  const c=clientData.client||{};
+  document.getElementById('greeting').textContent=('Привет, '+(c.name||'')).trim()||'Привет';
+  document.getElementById('subtitle').textContent='Тренер — '+(clientData.trainer_name||'тренер');
+
+  const pass=clientData.pass;
+  const passWrap=document.getElementById('cdPassWrap');
+  if (pass&&pass.total>0){
+    passWrap.style.display='';
+    document.getElementById('cdPassLeft').textContent=pass.left;
+    document.getElementById('cdPassTotal').textContent='/'+pass.total;
+    document.getElementById('cdPassBar').style.width=Math.max(0,Math.min(100,Math.round(pass.left/pass.total*100)))+'%';
+    document.getElementById('cdPassNote').innerHTML=pass.valid_until
+      ?'до <b>'+new Date(pass.valid_until).toLocaleDateString('ru-RU')+'</b>':'бессрочный';
+    document.getElementById('cdPassUsed').textContent=pass.used+' из '+pass.total+' использовано';
+  } else { passWrap.style.display='none'; }
+
+  const k=c.kbju;
+  const kWrap=document.getElementById('cdKbjuWrap');
+  if (k&&(k.kcal||k.protein||k.fat||k.carbs)){
+    kWrap.style.display='';
+    document.getElementById('cdKcal').textContent=k.kcal??'—';
+    document.getElementById('cdProtein').textContent=k.protein??'—';
+    document.getElementById('cdFat').textContent=k.fat??'—';
+    document.getElementById('cdCarbs').textContent=k.carbs??'—';
+  } else { kWrap.style.display='none'; }
+
+  cdRenderStrip();
+  cdRenderProgram(clientData.program, clientData.exercises);
+  cmRender();
+}
+
+function cdRenderStrip(){
+  const strip=document.getElementById('cdStrip');
+  const start=new Date(); start.setDate(start.getDate()-7); start.setHours(0,0,0,0);
+  const days={}; (clientData.days||[]).forEach(d=>{ days[d.for_date]=true; });
+  const DOW=['вс','пн','вт','ср','чт','пт','сб'];
+  strip.innerHTML=''; let selEl=null;
+  for (let i=0;i<21;i++){
+    const d=new Date(start.getTime()+i*864e5);
+    const di=d.toLocaleDateString('sv');
+    const el=document.createElement('div'); el.className='day';
+    if (di===cdDate.toLocaleDateString('sv')){ el.classList.add('on'); selEl=el; }
+    el.innerHTML=`<div class="dow">${DOW[d.getDay()]}</div><div class="dnum">${d.getDate()}</div><div class="ddot${days[di]?'':' hidden'}"></div>`;
+    el.onclick=async()=>{ cdDate=d; await cdLoadDay(); };
+    strip.appendChild(el);
+  }
+  selEl?.scrollIntoView({inline:'center',block:'nearest'});
+}
+
+async function cdLoadDay(){
+  try {
+    const res=await api('client_self_state',{for_date:cdDate.toLocaleDateString('sv'),...clientDayBounds()});
+    clientData={...clientData,...res};
+    cdRenderStrip();
+    cdRenderProgram(res.program, res.exercises);
+  } catch(e){ console.error(e); }
+}
+
+function cdRenderProgram(program, exercises){
+  const isToday=cdDate.toLocaleDateString('sv')===new Date().toLocaleDateString('sv');
+  document.getElementById('cdProgTitle').textContent=isToday?'Программа на сегодня':
+    'Программа · '+cdDate.toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
+  const noteWrap=document.getElementById('cdNoteWrap');
+  if (program?.coach_note){ noteWrap.style.display=''; document.getElementById('cdNoteText').textContent=program.coach_note; }
+  else noteWrap.style.display='none';
+
+  const prog=document.getElementById('cdProg');
+  const exs=exercises||[];
+  if (!exs.length){
+    prog.innerHTML='<p style="text-align:center;color:var(--faint);padding:24px 0;font-size:14px">На этот день программы нет</p>';
+    return;
+  }
+  const order=[],byGroup={};
+  exs.forEach(ex=>{ const g=ex.muscle_group||''; if(!(g in byGroup)){byGroup[g]=[];order.push(g);} byGroup[g].push(ex); });
+  prog.innerHTML=''; let num=1;
+  order.forEach(g=>{
+    if (g){ const h=document.createElement('div'); h.className='cd-gsec'; h.textContent=g; prog.appendChild(h); }
+    byGroup[g].forEach(ex=>prog.appendChild(cdExCard(ex,num++)));
+  });
+}
+
+function cdExCard(ex, num){
+  const unit=ex.unit||'кг';
+  const sets=ex.sets||[];
+  const planReps=sets[0]?.plan_reps, planW=sets[0]?.plan_w;
+  const card=document.createElement('div'); card.className='cd-ex';
+  const head=document.createElement('div'); head.className='cd-ex-head';
+  const numEl=document.createElement('div'); numEl.className='cd-ex-num'; numEl.textContent=num;
+  const nameIn=document.createElement('input'); nameIn.className='cd-ex-name'; nameIn.value=ex.name; nameIn.type='text';
+  head.append(numEl,nameIn); card.appendChild(head);
+  if (sets.length){
+    const meta=document.createElement('div'); meta.className='cd-ex-meta';
+    meta.innerHTML=`<b>${sets.length} × ${planReps??'—'}</b>${planW!=null?' · план '+fnum(planW)+' '+unit:''}`;
+    card.appendChild(meta);
+  }
+  const local=sets.map(s=>({plan_w:s.plan_w,plan_reps:s.plan_reps,fact_w:s.fact_w??s.plan_w,done:!!s.done}));
+  async function persist(){ try{await api('client_self_exercise',{exercise_id:ex.id,sets:local}); toast('Сохранено · тренер увидит');}catch{toast('Ошибка');} }
+  nameIn.onchange=async()=>{ try{await api('client_self_exercise',{exercise_id:ex.id,name:nameIn.value.trim()});toast('Сохранено');}catch{toast('Ошибка');} };
+  const setsBox=document.createElement('div'); setsBox.className='cd-sets';
+  const step=unit==='сек'?5:2.5;
+  local.forEach((s,j)=>{
+    const row=document.createElement('div'); row.className='cd-set';
+    const lbl=document.createElement('div'); lbl.className='slbl'; lbl.textContent=(j+1)+'-й';
+    const wBox=document.createElement('div'); wBox.className='cd-set-w';
+    const bm=document.createElement('button'); bm.textContent='−'; bm.type='button';
+    const inp=document.createElement('input'); inp.type='text'; inp.inputMode='decimal'; inp.value=fnum(s.fact_w??0);
+    const bp=document.createElement('button'); bp.textContent='+'; bp.type='button';
+    const unitEl=document.createElement('small'); unitEl.textContent=unit;
+    wBox.append(bm,inp,bp,unitEl);
+    bm.onclick=()=>{ const v=parseFloat(String(inp.value).replace(',','.'))||0; const nv=Math.max(0,v-step); inp.value=fnum(nv); s.fact_w=nv; persist(); };
+    bp.onclick=()=>{ const v=parseFloat(String(inp.value).replace(',','.'))||0; const nv=v+step; inp.value=fnum(nv); s.fact_w=nv; persist(); };
+    inp.onchange=()=>{ s.fact_w=parseFloat(String(inp.value).replace(',','.'))||0; inp.value=fnum(s.fact_w); persist(); };
+    const chk=document.createElement('button'); chk.type='button'; chk.className='cd-chk'+(s.done?' on':'');
+    chk.innerHTML='<svg fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="M4 12.5l5.5 5.5L20 6.5"/></svg>';
+    chk.onclick=()=>{ chk.classList.toggle('on'); s.done=chk.classList.contains('on'); persist(); };
+    row.append(lbl,wBox,chk); setsBox.appendChild(row);
+  });
+  card.appendChild(setsBox); return card;
+}
+
+/* ─── Замеры клиента ─── */
+const cmMonths=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+function cmFDate(d){ return d.getDate()+' '+cmMonths[d.getMonth()]; }
+function cmFNum(v){ if(v==null||v==='—')return'—'; const n=Number(v); return isNaN(n)?String(v):n%1===0?String(n):n.toFixed(1).replace('.',','); }
+
+function cmRender(){
+  const ms=(clientData?.measurements||[]).map(r=>({
+    date:new Date(r.measured_at),w:Number(r.values?.weight||0),
+    waist:r.values?.waist,chest:r.values?.chest,hips:r.values?.hips,thigh:r.values?.thigh,arm:r.values?.arm,
+  })).filter(r=>r.w>0).sort((a,b)=>a.date-b.date);
+  const wCard=document.getElementById('cmWeightCard');
+  if (!ms.length){
+    wCard.style.display='none';
+    document.getElementById('cmGrid').innerHTML='<p style="color:var(--faint);font-size:14px;grid-column:1/-1;padding:6px 0">Замеров пока нет</p>';
+    document.getElementById('cmHistory').innerHTML='';
+    return;
+  }
+  wCard.style.display='';
+  const first=ms[0],last=ms[ms.length-1],prev=ms[ms.length-2]||first;
+  document.getElementById('cmWNow').textContent=cmFNum(last.w);
+  const sgn=v=>(v>0?'+':'−')+cmFNum(Math.abs(v).toFixed(1))+' кг';
+  const dA=last.w-first.w,dL=last.w-prev.w;
+  const dAEl=document.getElementById('cmDAll'),dLEl=document.getElementById('cmDLast');
+  dAEl.textContent=sgn(dA); dAEl.style.color=dA<=0?'var(--green)':'var(--red)';
+  dLEl.textContent=sgn(dL); dLEl.style.color=dL<=0?'var(--green)':'var(--red)';
+  document.getElementById('cmDFirst').textContent=cmFDate(first.date);
+  document.getElementById('cmDLastD').textContent=cmFDate(last.date);
+  const svg=document.getElementById('cmChart');
+  const ws=ms.map(e=>e.w); const mn=Math.min(...ws)-.5,mx=Math.max(...ws)+.5,rng=mx-mn||1;
+  const X=i=>8+i*(324/Math.max(ms.length-1,1));
+  const Y=w=>4+(1-(w-mn)/rng)*62;
+  const pts=ms.map((e,i)=>`${X(i)},${Y(e.w)}`).join(' ');
+  svg.innerHTML=`<polyline points="8,72 ${pts} ${X(ms.length-1)},72" fill="rgba(200,169,97,.08)" stroke="none"/>
+    <polyline points="${pts}" fill="none" stroke="var(--gold)" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"/>
+    ${ms.map((e,i)=>`<circle cx="${X(i)}" cy="${Y(e.w)}" r="${i===ms.length-1?5:3}" fill="${i===ms.length-1?'var(--gold)':'var(--bg)'}" stroke="var(--gold)" stroke-width="2"/>`).join('')}`;
+  const labels=[['waist','Талия'],['chest','Грудь'],['hips','Бёдра'],['thigh','Бедро'],['arm','Бицепс']];
+  const grid=document.getElementById('cmGrid'); grid.innerHTML='';
+  labels.forEach(([k,l])=>{
+    const val=last[k],fval=first[k];
+    const d=(val!=null&&fval!=null)?Number(val)-Number(fval):null;
+    const cls=d==null?'':d<0?'dn':d>0?'up':'';
+    const delta=d==null?'':d===0?'0':(d>0?'+':'−')+cmFNum(Math.abs(d).toFixed(1));
+    grid.innerHTML+=`<div class="cm-cell"><span>${l}</span><b class="num">${cmFNum(val)||'—'}<small> см</small><i class="${cls}">${delta}</i></b></div>`;
+  });
+  const hist=document.getElementById('cmHistory');
+  hist.innerHTML='<div class="sec" style="margin-top:14px"><h2>История</h2></div>';
+  [...ms].reverse().forEach(e=>{
+    hist.innerHTML+=`<div class="cm-hist-item"><div class="cm-hist-top"><b class="num">${cmFNum(e.w)} кг</b><time>${cmFDate(e.date)}</time></div>
+      <div class="cm-hist-body">${[e.waist&&'талия '+cmFNum(e.waist),e.chest&&'грудь '+cmFNum(e.chest),e.hips&&'бёдра '+cmFNum(e.hips),e.thigh&&'бедро '+cmFNum(e.thigh),e.arm&&'бицепс '+cmFNum(e.arm)].filter(Boolean).join(' · ')}</div></div>`;
+  });
+}
+document.getElementById('cmAddBtn').onclick=()=>{
+  const f=document.getElementById('cmForm');
+  f.style.display=f.style.display==='none'?'':'none';
+  if (f.style.display!=='none') document.getElementById('cmInW').focus();
+};
+document.getElementById('cmSaveBtn').onclick=async()=>{
+  const val=id=>{const v=parseFloat(String(document.getElementById(id).value).replace(',','.')); return isNaN(v)?null:v;};
+  const values={},map={cmInW:'weight',cmInWaist:'waist',cmInChest:'chest',cmInHips:'hips',cmInThigh:'thigh',cmInArm:'arm'};
+  Object.entries(map).forEach(([id,key])=>{ const v=val(id); if(v!=null)values[key]=v; });
+  if (!values.weight){ toast('Укажи вес'); return; }
+  try {
+    const res=await api('client_self_measure_add',{measured_at:new Date().toLocaleDateString('sv'),values});
+    clientData.measurements=[...(clientData.measurements||[]),res.measurement];
+    document.getElementById('cmForm').style.display='none';
+    ['cmInW','cmInWaist','cmInChest','cmInHips','cmInThigh','cmInArm'].forEach(id=>document.getElementById(id).value='');
+    cmRender(); toast('Замер сохранён · тренер увидит динамику');
+  } catch{ toast('Ошибка сохранения'); }
+};
+
 async function boot(){
   setDate();
   if (!tg?.initData && !DEV){
@@ -1843,7 +2186,7 @@ async function boot(){
     return; // вне Telegram без dev — показываем пустой каркас
   }
   try {
-    const res = await api('bootstrap', dayBounds());
+    const res = await api('bootstrap', {...dayBounds(), ...clientDayBounds()});
     if (res.role === 'trainer'){
       real = true; me = res.trainer; myClients = res.clients || [];
       homeData = res;
@@ -1852,8 +2195,11 @@ async function boot(){
       renderHome();
       renderClients();
     } else if (res.role === 'client'){
-      // клиентская сторона — отдельным этапом; пока сообщение
-      document.body.innerHTML = '<div class="placeholder" style="padding-top:120px"><h2>Дневник клиента</h2><p>Клиентская часть в новом стиле — следующим этапом.</p></div>';
+      real = true;
+      clientData = res;
+      switchToClient();
+      renderClientV2();
+      if (res.joined) toast('Добро пожаловать! Это твой дневник');
     }
   } catch(e){
     console.error('boot:', e);
