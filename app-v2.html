@@ -1284,7 +1284,22 @@ function paneProfile(){
         ? `<div class="cc-act" onclick="setClientArchive(false)" style="color:var(--green)"><svg viewBox="0 0 24 24"><path d="M9 11l3 3 8-8M20 12a8 8 0 11-16 0 8 8 0 0116 0z" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span>Восстановить из архива</span></div>`
         : `<div class="cc-act" onclick="setClientArchive(true)" style="color:var(--faint)"><svg viewBox="0 0 24 24"><path d="M21 8v13H3V8M1 3h22v5H1zM10 12h4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span>В архив</span></div>`
       }
+    </div>
+    <div class="cc-actions" style="grid-template-columns:1fr;margin-top:10px">
+      <div class="cc-act" onclick="deleteClient()" style="color:var(--red);border-color:rgba(201,122,106,.35)"><svg viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" fill="none" stroke="currentColor" stroke-width="1.7"/></svg><span>Удалить клиента</span></div>
     </div>`;
+}
+async function deleteClient(){
+  const name = cardData?.client?.name || 'клиента';
+  const msg = `Удалить ${name} навсегда?\nВся история, абонементы и программы будут стёрты. Это нельзя отменить.`;
+  const ok = tg?.showConfirm ? await new Promise(r=>tg.showConfirm(msg,r)) : confirm(msg);
+  if (!ok) return;
+  try {
+    await api('client_delete', { client_id: cardData.client.id });
+    toast('Клиент удалён');
+    closeCard();
+    await reloadClients();
+  } catch(e){ toast('Ошибка: '+(e.message||'')); }
 }
 
 function paneWorkouts(){
