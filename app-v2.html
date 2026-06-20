@@ -1435,6 +1435,7 @@ async function setClientArchive(doArchive){
 /* ═══════════ Конструктор программы ═══════════ */
 const PROG_GROUPS = ['Грудь','Спина','Ноги','Плечи','Руки','Пресс','Кардио','Растяжка'];
 const PROG_LIB = ['Приседания','Жим лёжа','Становая тяга','Румынская тяга','Выпады','Жим гантелей сидя','Тяга верхнего блока','Жим ногами','Подтягивания','Планка'];
+let exHistory=null;   // личная история упражнений тренера {name,unit,muscle_group,count}
 let progClientId=null, progDate=null, progEx=[], progGroupsSel=new Set(), progDays={};
 const pIso = d => d.toLocaleDateString('sv');
 const pDayStart = d => { const x=new Date(d); x.setHours(0,0,0,0); return x; };
@@ -1449,6 +1450,15 @@ async function editProgram(){
   window.scrollTo({top:0});
   await progRenderDays();
   await progLoad();
+  loadExHistory();   // подтянуть личную историю упражнений (не блокирует открытие)
+}
+async function loadExHistory(){
+  if (exHistory !== null) { progRenderLib(); return; }   // уже загружена за сессию
+  try {
+    const r = await api('exercise_history');
+    exHistory = (r.exercises || []);
+  } catch(e){ exHistory = []; }
+  progRenderLib();
 }
 function progClose(){
   document.getElementById('progEditor').classList.remove('on');
@@ -1587,10 +1597,25 @@ function progSummary(){
   const el=document.getElementById('progSum');
   if (el) el.textContent = n ? `${n} упр · ${sets} подходов` : '';
 }
-document.getElementById('progLib').innerHTML = PROG_LIB.map(n=>`<button class="libchip">${n}</button>`).join('');
-document.getElementById('progLib').querySelectorAll('.libchip').forEach(b=>{
-  b.onclick=()=>{ const g=[...progGroupsSel][0]||''; progEx.push({name:b.textContent,sets:3,reps:10,w:20,group:g}); progRenderList(); };
-});
+function progRenderLib(){
+  const box=document.getElementById('progLib');
+  if (!box) return;
+  // личная история тренера, если есть; иначе — стандартный набор
+  const items = (exHistory && exHistory.length)
+    ? exHistory.map(e=>({name:e.name, group:e.muscle_group||''}))
+    : PROG_LIB.map(n=>({name:n, group:''}));
+  box.innerHTML = items.map((it,i)=>`<button class="libchip" data-i="${i}">${escHtml(it.name)}</button>`).join('');
+  box.querySelectorAll('.libchip').forEach(b=>{
+    const it=items[+b.dataset.i];
+    b.onclick=()=>{
+      const g=[...progGroupsSel][0] || it.group || '';
+      progEx.push({name:it.name,sets:3,reps:10,w:20,group:g});
+      progRenderList();
+    };
+  });
+}
+function escHtml(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+progRenderLib();   // первичный рендер (стандартный набор до загрузки истории)
 document.getElementById('progSave').onclick = async ()=>{
   if (!progClientId) return;
   const groups=[...progGroupsSel];
@@ -1609,6 +1634,7 @@ document.getElementById('progSave').onclick = async ()=>{
       exercises,
     });
     toast('Программа сохранена · клиент увидит её в дневнике');
+    exHistory = null;   // история могла пополниться новыми упражнениями
     await progRenderDays();
     if (cardData && cardData.client.id===progClientId){
       cardData = await api('client_card', { client_id: progClientId });
