@@ -1190,7 +1190,7 @@ function clItemHTML(c){
   }
   return `
     <div class="cl-item" onclick="openCard('${c.id}')">
-      <div class="cl-ava">${initial(c.name)}</div>
+      <div class="cl-ava">${avaInner(c.avatar_url, c.name)}</div>
       <div class="who"><b>${c.name}</b><span class="${connected?'ok':''}">${sub}</span></div>
       <span class="cl-tag ${tagCls}">${tagTxt}</span>
     </div>`;
