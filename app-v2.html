@@ -977,6 +977,9 @@ function fmtMoney(n){ return Number(n||0).toLocaleString('ru-RU'); }
 function initial(name){ return (name?.[0]||'?').toUpperCase(); }
 /* Мини-график (спарклайн) для аналитики. Пока иллюстративный; позже — реальные данные по дням. */
 function sparkSVG(pts){
+  pts=(pts||[]).map(Number).filter(v=>!isNaN(v));
+  if(!pts.length) pts=[0,0];
+  if(pts.length===1) pts=[pts[0],pts[0]];
   const max=Math.max(...pts), min=Math.min(...pts), rng=(max-min)||1, n=pts.length;
   const X=i=>(i/(n-1))*100;
   const Y=v=>21 - ((v-min)/rng)*18;   // в пределах высоты 22, с отступами
@@ -1069,35 +1072,34 @@ function renderHome(){
     att.style.display = 'none';
   }
 
-  // Аналитика (заглушка с реальным доходом месяца; графики — позже из истории)
+  // Аналитика — реальные ряды из истории (последние 6 мес / 7 недель)
   document.getElementById('anaTitle').textContent = 'Аналитика за ' + MONTHS_GEN[new Date().getMonth()];
   const ana = document.getElementById('anaBlock');
   const activeClients = (myClients||[]).filter(c=>c.status!=='archived').length;
-  const monthDone = (h.today||[]).length; // упрощённо; точная цифра придёт из finance
   ana.innerHTML = `
     <div class="acard" onclick="show('scr-finance')">
       <div class="albl">Доход</div>
       <div class="aval num" style="font-size:14px">${fmtMoney(inc)} ₽</div>
       <span class="adelta">за месяц</span>
-      ${sparkSVG([4,5,4.5,6,5.5,7,8])}
+      ${sparkSVG(h.spark_income)}
     </div>
     <div class="acard" onclick="show('scr-clients')">
       <div class="albl">Клиенты</div>
       <div class="aval num">${activeClients}</div>
       <span class="adelta">активных</span>
-      ${sparkSVG([2,2,3,3,3,4,4])}
+      ${sparkSVG(h.spark_clients)}
     </div>
     <div class="acard" onclick="show('scr-workouts')">
       <div class="albl">Тренировки</div>
       <div class="aval num">${h.week?.done||0}</div>
       <span class="adelta">за неделю</span>
-      ${sparkSVG([1,3,2,3,2,4,3])}
+      ${sparkSVG(h.spark_sessions)}
     </div>
     <div class="acard" onclick="show('scr-passes')">
       <div class="albl">Абонементы</div>
       <div class="aval num">${expiring.length}</div>
       <span class="adelta warn">истекают</span>
-      ${sparkSVG([3,2,2,1,2,1,1])}
+      ${sparkSVG(h.spark_passes)}
     </div>`;
 
   // Колокольчик
