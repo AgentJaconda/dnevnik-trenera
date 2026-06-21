@@ -620,6 +620,15 @@
         <div class="cd-kj-grid" id="cdStatsGrid"></div>
       </div>
     </div>
+    <div id="cdCheckinWrap" style="display:none">
+      <div class="cd-kbju" style="border-color:var(--gold-deep)">
+        <div class="cd-kbju-lbl">Чек-ин недели</div>
+        <div style="font-size:14px;color:var(--text);margin-bottom:12px">Как прошла неделя?</div>
+        <div id="cdMoodRow" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px"></div>
+        <textarea id="cdCheckinNote" rows="2" placeholder="Пара слов тренеру (необязательно)" style="width:100%;box-sizing:border-box;background:var(--card-2);border:1px solid var(--line);border-radius:11px;color:var(--text);font-family:'Inter';font-size:16px;padding:11px 12px;resize:none;margin-bottom:12px"></textarea>
+        <button id="cdCheckinSave" class="sheet-save" type="button" style="width:100%">Отправить</button>
+      </div>
+    </div>
     <div id="cdPassWrap" style="display:none">
       <div class="cd-pass">
         <div class="cd-pass-top">
@@ -1284,7 +1293,7 @@ function paneProfile(){
     const t = new Date(up.starts_at);
     nextHTML = `<div class="row-item"><div class="rdot" style="background:var(--gold)"></div><div class="rmain"><b>Следующая тренировка</b><span>${t.toLocaleDateString('ru-RU')}, ${t.toTimeString().slice(0,5)}</span></div></div>`;
   }
-  return passHTML + nextHTML + `
+  return passHTML + nextHTML + checkinsHTML() + `
     <div class="cc-actions">
       <div class="cc-act" onclick="writeClient()"><svg viewBox="0 0 24 24"><path d="M21 11.5a8.4 8.4 0 01-9 8.4 9 9 0 01-4-1L3 20l1.2-4.5a8.4 8.4 0 01-1-4A8.4 8.4 0 0112 3a8.4 8.4 0 019 8.5z"/></svg><span>Написать</span></div>
       <div class="cc-act" onclick="openSessSheet()"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span>Тренировка</span></div>
@@ -1429,6 +1438,20 @@ function panePayments(){
   html += p.map(x=>`<div class="row-item"><div class="rmain"><b>${x.label}</b><span>${new Date(x.date).toLocaleDateString('ru-RU')}</span></div><div class="rsum">${fmtMoney(x.sum)} ₽</div></div>`).join('');
   html += `<div class="cc-act" style="margin:14px auto 0;max-width:240px;justify-content:center" onclick="openPassSheet()"><span style="color:var(--gold)">+ Продать абонемент</span></div>`;
   return html;
+}
+
+function checkinsHTML(){
+  const cs=cardData.checkins||[];
+  if(!cs.length) return '';
+  const MO={1:'😣',2:'😐',3:'🙂',4:'🔥'};
+  const items=cs.map(c=>{
+    const wk=new Date(c.week_start).toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit'});
+    return `<div class="row-item" style="align-items:flex-start">
+      <div style="font-size:20px;line-height:1.3;flex:none">${MO[c.mood]||'•'}</div>
+      <div class="rmain"><b>Неделя с ${wk}</b>${c.note?`<span>${escHtml(c.note)}</span>`:''}</div>
+    </div>`;
+  }).join('');
+  return `<div class="sec" style="margin-top:4px"><h2>Чек-ины недели</h2></div>${items}`;
 }
 
 function paneNotes(){
@@ -2315,6 +2338,7 @@ function renderClientV2(){
   } else { kWrap.style.display='none'; }
 
   renderClientStats();
+  renderCheckinPrompt();
   cdRenderStrip();
   cdRenderProgram(clientData.program, clientData.exercises);
   cmRender();
@@ -2329,6 +2353,40 @@ function plural(n, forms){
   if (b>=2 && b<=4) return forms[1];
   return forms[2];
 }
+
+/* ── Чек-ин недели (клиент) ── */
+const CHECKIN_MOODS=[[1,'😣','тяжело'],[2,'😐','так себе'],[3,'🙂','норм'],[4,'🔥','супер']];
+let cdMood=null;
+function renderCheckinPrompt(){
+  const wrap=document.getElementById('cdCheckinWrap'); if(!wrap) return;
+  if (clientData?.checkin_done_week){ wrap.style.display='none'; return; }
+  wrap.style.display='';
+  cdMood=null;
+  const row=document.getElementById('cdMoodRow');
+  row.innerHTML=CHECKIN_MOODS.map(([v,e,l])=>
+    `<button type="button" data-m="${v}" class="cdMoodBtn" style="background:var(--card-2);border:1px solid var(--line);border-radius:11px;padding:9px 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px">
+      <span style="font-size:22px">${e}</span><span style="font-size:10px;color:var(--muted)">${l}</span></button>`
+  ).join('');
+  row.querySelectorAll('.cdMoodBtn').forEach(b=>{
+    b.onclick=()=>{ cdMood=+b.dataset.m;
+      row.querySelectorAll('.cdMoodBtn').forEach(x=>{ x.style.borderColor='var(--line)'; x.style.background='var(--card-2)'; });
+      b.style.borderColor='var(--gold)'; b.style.background='rgba(200,169,97,.12)';
+    };
+  });
+  document.getElementById('cdCheckinNote').value='';
+}
+document.getElementById('cdCheckinSave').onclick=async function(){
+  if(!cdMood){ toast('Выбери, как прошла неделя'); return; }
+  const note=document.getElementById('cdCheckinNote').value.trim();
+  this.disabled=true;
+  try{
+    await api('client_self_checkin_add',{mood:cdMood,note});
+    if(clientData) clientData.checkin_done_week=true;
+    document.getElementById('cdCheckinWrap').style.display='none';
+    toast('Спасибо! Чек-ин отправлен 💪');
+  }catch(e){ toast('Ошибка'); }
+  this.disabled=false;
+};
 
 function renderClientStats(){
   const wrap=document.getElementById('cdStatsWrap');
