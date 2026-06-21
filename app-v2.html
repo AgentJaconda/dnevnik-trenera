@@ -785,6 +785,21 @@
   </div>
 </div>
 
+<!-- Модалка: цели КБЖУ -->
+<div class="sheet-overlay" id="kbjuSheet">
+  <div class="sheet">
+    <h3><span>Цели на день · <span id="kbName"></span></span><span class="x" onclick="closeSheet('kbjuSheet')">✕</span></h3>
+    <div style="font-size:12.5px;color:var(--muted);margin:0 0 11px;font-weight:500">КБЖУ — клиент увидит в своём дневнике</div>
+    <div class="fg2">
+      <div class="field"><label>Ккал</label><input inputmode="numeric" id="kbKcal" placeholder="1850"></div>
+      <div class="field"><label>Белки, г</label><input inputmode="numeric" id="kbProtein" placeholder="130"></div>
+      <div class="field"><label>Жиры, г</label><input inputmode="numeric" id="kbFat" placeholder="60"></div>
+      <div class="field"><label>Углеводы, г</label><input inputmode="numeric" id="kbCarbs" placeholder="180"></div>
+    </div>
+    <button class="sheet-save" id="kbSave" type="button">Сохранить</button>
+  </div>
+</div>
+
 <!-- Модалка: записать тренировку -->
 <div class="sheet-overlay" id="sessSheet">
   <div class="sheet">
@@ -1310,6 +1325,9 @@ function paneProfile(){
       <div class="cc-act" onclick="editProgram()"><svg viewBox="0 0 24 24"><path d="M9 11H5v10h14V11h-4M9 11V7a3 3 0 016 0v4M9 11h6"/></svg><span>Программа</span></div>
     </div>
     <div class="cc-actions" style="grid-template-columns:1fr;margin-top:10px">
+      <div class="cc-act" onclick="openKbjuSheet()"><svg viewBox="0 0 24 24"><path d="M12 2c1 3 4 4.5 4 8a4 4 0 11-8 0c0-1.5.5-2.5 1-3.5C9.5 8 10 6 12 2z"/></svg><span>Цели КБЖУ</span></div>
+    </div>
+    <div class="cc-actions" style="grid-template-columns:1fr;margin-top:10px">
       <div class="cc-act" onclick="inviteClient()"><svg viewBox="0 0 24 24"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v14"/></svg><span>${cardData.client.tg_id?'Ссылка на дневник':'Пригласить в дневник'}</span></div>
     </div>
     <div class="cc-actions" style="grid-template-columns:1fr;margin-top:10px">
@@ -1787,6 +1805,27 @@ function openPassSheet(){
   renderPsExisting();
   sheet('passSheet');
 }
+
+function openKbjuSheet(){
+  const c = cardData.client, k = c.kbju || {};
+  document.getElementById('kbName').textContent = c.name;
+  document.getElementById('kbKcal').value = k.kcal ?? '';
+  document.getElementById('kbProtein').value = k.protein ?? '';
+  document.getElementById('kbFat').value = k.fat ?? '';
+  document.getElementById('kbCarbs').value = k.carbs ?? '';
+  sheet('kbjuSheet');
+}
+document.getElementById('kbSave').onclick = async ()=>{
+  const num=id=>{ const v=parseInt(document.getElementById(id).value,10); return isNaN(v)?null:v; };
+  const kbju={ kcal:num('kbKcal'), protein:num('kbProtein'), fat:num('kbFat'), carbs:num('kbCarbs') };
+  const any=Object.values(kbju).some(v=>v!=null);
+  try {
+    await api('client_set_kbju', { client_id: cardData.client.id, kbju: any?kbju:null });
+    cardData.client.kbju = any?kbju:null;
+    closeSheet('kbjuSheet');
+    toast('Цели КБЖУ сохранены · клиент увидит');
+  } catch(e){ toast('Ошибка: '+(e.message||'')); }
+};
 function renderPsExisting(){
   const box = document.getElementById('psExisting');
   const list = cardData.passes || [];
