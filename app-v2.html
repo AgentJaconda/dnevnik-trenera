@@ -690,9 +690,18 @@
         <button class="sheet-save" id="cmSaveBtn" type="button" style="flex:2">Сохранить замер</button>
       </div>
     </div>
+    <div class="sec" style="margin-top:6px"><h2>Фото прогресса</h2></div>
+    <input type="file" id="cpFile" accept="image/*" style="display:none">
+    <button class="add-btn" id="cpAddBtn" style="margin:4px 0 12px">+ Добавить фото</button>
+    <div id="cpGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px"></div>
     <div id="cmHistory"></div>
   </div>
 </section>
+
+<!-- Просмотр фото на весь экран -->
+<div id="imgLightbox" onclick="this.style.display='none'" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.92);align-items:center;justify-content:center;padding:16px">
+  <img id="imgLightboxImg" style="max-width:100%;max-height:100%;border-radius:10px" alt="">
+</div>
 
 <!-- ════════ Конструктор программы ════════ -->
 <div class="editor" id="progEditor">
@@ -1245,7 +1254,7 @@ function renderCard(){
       t.classList.add('on');
       card.querySelectorAll('.tpane').forEach(p=>p.classList.remove('on'));
       document.getElementById('pane-'+t.dataset.t).classList.add('on');
-      if (t.dataset.t === 'progress') setTimeout(drawProgress, 50);
+      if (t.dataset.t === 'progress') { setTimeout(drawProgress, 50); loadCardPhotos(); }
     };
   });
   // привязать сохранение заметок
@@ -1353,7 +1362,7 @@ function paneProgram(){
 
 function paneProgress(){
   const m = cardData.measurements || [];
-  if (!m.length) return '<p class="empty-pane">Замеров пока нет.<br>Клиент добавит их в своём дневнике.</p>';
+  if (!m.length) return '<p class="empty-pane">Замеров пока нет.<br>Клиент добавит их в своём дневнике.</p><div id="ccPhotos" style="margin-top:14px"></div>';
   const first = m[0], last = m[m.length-1];
   const fw = first.values?.weight, lw = last.values?.weight;
   const diff = (fw && lw) ? (lw - fw).toFixed(1) : null;
@@ -1379,9 +1388,19 @@ function paneProgress(){
       <div class="cc-stat"><b class="num">${m.length}</b><span>замеров</span></div>
     </div>
     <canvas id="progCanvas" style="width:100%;height:160px;background:var(--card);border:1px solid var(--line);border-radius:14px"></canvas>
-    ${bodyHTML}`;
+    ${bodyHTML}<div id="ccPhotos" style="margin-top:18px"></div>`;
 }
 
+async function loadCardPhotos(){
+  const box=document.getElementById('ccPhotos'); if(!box||!cardData) return;
+  let photos=[];
+  try{ const r=await api('client_photos',{client_id:cardData.client.id}); photos=r.photos||[]; }catch(e){ return; }
+  const lbl='<div style="font-size:12.5px;font-weight:600;color:var(--muted);margin:4px 0 10px;letter-spacing:.04em">ФОТО ПРОГРЕССА</div>';
+  if(!photos.length){ box.innerHTML=lbl+'<p style="color:var(--faint);font-size:13px">Клиент ещё не добавил фото.</p>'; return; }
+  box.innerHTML=lbl+'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">'
+    +photos.map(p=>`<div style="aspect-ratio:1;border-radius:11px;overflow:hidden;border:1px solid var(--line)"><img src="${p.url}" onclick="openImg('${p.url}')" style="width:100%;height:100%;object-fit:cover;cursor:pointer" alt="фото"></div>`).join('')
+    +'</div>';
+}
 function drawProgress(){
   const m = cardData?.measurements || [];
   const cv = document.getElementById('progCanvas');
@@ -2299,6 +2318,7 @@ function renderClientV2(){
   cdRenderStrip();
   cdRenderProgram(clientData.program, clientData.exercises);
   cmRender();
+  loadClientPhotos();
 }
 
 // Правильное склонение: plural(2,['неделя','недели','недель']) -> 'недели'
@@ -2493,6 +2513,57 @@ function cmRender(){
       <div class="cm-hist-body">${[e.waist&&'талия '+cmFNum(e.waist),e.chest&&'грудь '+cmFNum(e.chest),e.hips&&'бёдра '+cmFNum(e.hips),e.thigh&&'бедро '+cmFNum(e.thigh),e.arm&&'бицепс '+cmFNum(e.arm)].filter(Boolean).join(' · ')}</div></div>`;
   });
 }
+/* ── Фото прогресса (клиент) ── */
+let cpPhotos=[];
+async function loadClientPhotos(){
+  const grid=document.getElementById('cpGrid'); if(!grid) return;
+  try{ const r=await api('client_self_photos'); cpPhotos=r.photos||[]; }catch(e){ cpPhotos=[]; }
+  renderClientPhotos();
+}
+function renderClientPhotos(){
+  const grid=document.getElementById('cpGrid'); if(!grid) return;
+  if(!cpPhotos.length){ grid.innerHTML='<p style="color:var(--faint);font-size:13px;grid-column:1/-1">Фото пока нет. Добавляй раз в неделю — увидишь, как меняешься.</p>'; return; }
+  grid.innerHTML=cpPhotos.map(p=>`<div style="position:relative;aspect-ratio:1;border-radius:11px;overflow:hidden;border:1px solid var(--line)">
+    <img src="${p.url}" onclick="openImg('${p.url}')" style="width:100%;height:100%;object-fit:cover;cursor:pointer" alt="фото">
+    <button onclick="deleteClientPhoto('${p.id}')" style="position:absolute;top:4px;right:4px;width:24px;height:24px;border:none;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:15px;line-height:1;cursor:pointer">×</button>
+    <span style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.65));color:#fff;font-size:10px;padding:10px 4px 4px;text-align:center">${cmFDate(new Date(p.taken_at))}</span>
+  </div>`).join('');
+}
+function openImg(url){ const lb=document.getElementById('imgLightbox'); document.getElementById('imgLightboxImg').src=url; lb.style.display='flex'; }
+async function deleteClientPhoto(id){
+  const ok=tg?.showConfirm?await new Promise(r=>tg.showConfirm('Удалить это фото?',r)):confirm('Удалить это фото?');
+  if(!ok) return;
+  try{ await api('client_self_photo_delete',{photo_id:id}); cpPhotos=cpPhotos.filter(p=>p.id!==id); renderClientPhotos(); toast('Фото удалено'); }catch(e){ toast('Ошибка'); }
+}
+function resizeImage(file,maxSide,quality){
+  return new Promise((resolve,reject)=>{
+    const img=new Image(), url=URL.createObjectURL(file);
+    img.onload=()=>{
+      URL.revokeObjectURL(url);
+      let w=img.width,h=img.height;
+      if(w>h&&w>maxSide){ h=Math.round(h*maxSide/w); w=maxSide; }
+      else if(h>=w&&h>maxSide){ w=Math.round(w*maxSide/h); h=maxSide; }
+      const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+      cv.getContext('2d').drawImage(img,0,0,w,h);
+      resolve(cv.toDataURL('image/jpeg',quality));
+    };
+    img.onerror=()=>{ URL.revokeObjectURL(url); reject(new Error('битое изображение')); };
+    img.src=url;
+  });
+}
+document.getElementById('cpAddBtn').onclick=()=>document.getElementById('cpFile').click();
+document.getElementById('cpFile').onchange=async function(){
+  const file=this.files&&this.files[0]; this.value='';
+  if(!file) return;
+  toast('Загружаю фото…');
+  try{
+    const b64=await resizeImage(file,1280,0.85);
+    await api('client_self_photo_add',{image_base64:b64});
+    toast('Фото добавлено');
+    await loadClientPhotos();
+  }catch(e){ toast('Не удалось: '+(e.message||'')); }
+};
+
 document.getElementById('cmAddBtn').onclick=()=>{
   const f=document.getElementById('cmForm');
   f.style.display=f.style.display==='none'?'':'none';
