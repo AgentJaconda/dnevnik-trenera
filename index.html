@@ -2535,7 +2535,7 @@ function cmFNum(v){ if(v==null||v==='—')return'—'; const n=Number(v); return
 
 function cmRender(){
   const ms=(clientData?.measurements||[]).map(r=>({
-    date:new Date(r.measured_at),w:Number(r.values?.weight||0),
+    id:r.id,date:new Date(r.measured_at),w:Number(r.values?.weight||0),
     waist:r.values?.waist,chest:r.values?.chest,hips:r.values?.hips,thigh:r.values?.thigh,arm:r.values?.arm,
   })).filter(r=>r.w>0).sort((a,b)=>a.date-b.date);
   const wCard=document.getElementById('cmWeightCard');
@@ -2577,7 +2577,12 @@ function cmRender(){
   const hist=document.getElementById('cmHistory');
   hist.innerHTML='<div class="sec" style="margin-top:14px"><h2>История</h2></div>';
   [...ms].reverse().forEach(e=>{
-    hist.innerHTML+=`<div class="cm-hist-item"><div class="cm-hist-top"><b class="num">${cmFNum(e.w)} кг</b><time>${cmFDate(e.date)}</time></div>
+    hist.innerHTML+=`<div class="cm-hist-item"><div class="cm-hist-top"><b class="num">${cmFNum(e.w)} кг</b>
+      <div style="display:flex;align-items:center;gap:12px">
+        <time>${cmFDate(e.date)}</time>
+        <span onclick="cmEdit('${e.id}')" style="color:var(--gold);cursor:pointer;font-size:12.5px">ред.</span>
+        <span onclick="cmDelete('${e.id}')" style="color:var(--red);cursor:pointer;font-size:15px;line-height:1">✕</span>
+      </div></div>
       <div class="cm-hist-body">${[e.waist&&'талия '+cmFNum(e.waist),e.chest&&'грудь '+cmFNum(e.chest),e.hips&&'бёдра '+cmFNum(e.hips),e.thigh&&'бедро '+cmFNum(e.thigh),e.arm&&'бицепс '+cmFNum(e.arm)].filter(Boolean).join(' · ')}</div></div>`;
   });
 }
@@ -2653,23 +2658,56 @@ document.getElementById('cpFile').onchange=async function(){
   }catch(e){ toast('Не удалось: '+(e.message||'')); }
 };
 
+const CM_MAP={cmInW:'weight',cmInWaist:'waist',cmInChest:'chest',cmInHips:'hips',cmInThigh:'thigh',cmInArm:'arm'};
+let cmEditId=null;
+function cmResetForm(){
+  cmEditId=null;
+  Object.keys(CM_MAP).forEach(id=>document.getElementById(id).value='');
+  document.getElementById('cmSaveBtn').textContent='Сохранить замер';
+}
+function cmEdit(id){
+  const m=(clientData.measurements||[]).find(x=>x.id===id); if(!m) return;
+  cmEditId=id;
+  Object.entries(CM_MAP).forEach(([el,key])=>{ const v=m.values?.[key]; document.getElementById(el).value=(v!=null?String(v).replace('.',','):''); });
+  document.getElementById('cmSaveBtn').textContent='Сохранить изменения';
+  const f=document.getElementById('cmForm'); f.style.display='';
+  f.scrollIntoView({behavior:'smooth',block:'center'});
+}
+async function cmDelete(id){
+  const ok=tg?.showConfirm?await new Promise(r=>tg.showConfirm('Удалить этот замер?',r)):confirm('Удалить этот замер?');
+  if(!ok) return;
+  try{
+    await api('client_self_measure_delete',{measurement_id:id});
+    clientData.measurements=(clientData.measurements||[]).filter(x=>x.id!==id);
+    if(cmEditId===id){ document.getElementById('cmForm').style.display='none'; cmResetForm(); }
+    cmRender(); renderClientStats(); toast('Замер удалён');
+  }catch{ toast('Ошибка'); }
+}
 document.getElementById('cmAddBtn').onclick=()=>{
   const f=document.getElementById('cmForm');
-  f.style.display=f.style.display==='none'?'':'none';
-  if (f.style.display!=='none') document.getElementById('cmInW').focus();
+  const opening=f.style.display==='none';
+  if(opening){ cmResetForm(); f.style.display=''; document.getElementById('cmInW').focus(); }
+  else { f.style.display='none'; }
 };
-document.getElementById('cmCancelBtn').onclick=()=>{ document.getElementById('cmForm').style.display='none'; };
+document.getElementById('cmCancelBtn').onclick=()=>{ document.getElementById('cmForm').style.display='none'; cmResetForm(); };
 document.getElementById('cmSaveBtn').onclick=async()=>{
   const val=id=>{const v=parseFloat(String(document.getElementById(id).value).replace(',','.')); return isNaN(v)?null:v;};
-  const values={},map={cmInW:'weight',cmInWaist:'waist',cmInChest:'chest',cmInHips:'hips',cmInThigh:'thigh',cmInArm:'arm'};
-  Object.entries(map).forEach(([id,key])=>{ const v=val(id); if(v!=null)values[key]=v; });
+  const values={};
+  Object.entries(CM_MAP).forEach(([id,key])=>{ const v=val(id); if(v!=null)values[key]=v; });
   if (!values.weight){ toast('Укажи вес'); return; }
   try {
-    const res=await api('client_self_measure_add',{measured_at:new Date().toLocaleDateString('sv'),values});
-    clientData.measurements=[...(clientData.measurements||[]),res.measurement];
+    if (cmEditId){
+      const res=await api('client_self_measure_update',{measurement_id:cmEditId,values});
+      clientData.measurements=(clientData.measurements||[]).map(m=>m.id===cmEditId?res.measurement:m);
+      toast('Замер обновлён');
+    } else {
+      const res=await api('client_self_measure_add',{measured_at:new Date().toLocaleDateString('sv'),values});
+      clientData.measurements=[...(clientData.measurements||[]),res.measurement];
+      toast('Замер сохранён · тренер увидит динамику');
+    }
     document.getElementById('cmForm').style.display='none';
-    ['cmInW','cmInWaist','cmInChest','cmInHips','cmInThigh','cmInArm'].forEach(id=>document.getElementById(id).value='');
-    cmRender(); toast('Замер сохранён · тренер увидит динамику');
+    cmResetForm();
+    cmRender(); renderClientStats();
   } catch{ toast('Ошибка сохранения'); }
 };
 
