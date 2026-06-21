@@ -1380,7 +1380,7 @@ function paneProgram(){
 
 function paneProgress(){
   const m = cardData.measurements || [];
-  if (!m.length) return '<p class="empty-pane">Замеров пока нет.<br>Клиент добавит их в своём дневнике.</p><div id="ccPhotos" style="margin-top:14px"></div>';
+  if (!m.length) return measureRemindHTML()+'<p class="empty-pane">Замеров пока нет.<br>Клиент добавит их в своём дневнике.</p><div id="ccPhotos" style="margin-top:14px"></div>';
   const first = m[0], last = m[m.length-1];
   const fw = first.values?.weight, lw = last.values?.weight;
   const diff = (fw && lw) ? (lw - fw).toFixed(1) : null;
@@ -1399,7 +1399,7 @@ function paneProgress(){
     });
     bodyHTML += '</div>';
   }
-  return `
+  return measureRemindHTML()+`
     <div class="cc-stats" style="margin-bottom:14px">
       <div class="cc-stat"><b class="num">${lw||'—'}</b><span>вес сейчас</span></div>
       <div class="cc-stat"><b class="num" style="color:${diff<0?'var(--green)':'var(--gold)'}">${diff!==null?(diff>0?'+':'')+diff:'—'}</b><span>изменение</span></div>
@@ -1409,6 +1409,23 @@ function paneProgress(){
     ${bodyHTML}<div id="ccPhotos" style="margin-top:18px"></div>`;
 }
 
+function mrChips(){
+  const cur=cardData.client.measure_remind_days||0;
+  return [[0,'Выкл'],[7,'Неделя'],[14,'2 недели'],[30,'Месяц']]
+    .map(([d,l])=>`<button onclick="setMeasureRemind(${d})" class="tab${cur===d?' on':''}" style="cursor:pointer">${l}</button>`).join('');
+}
+function measureRemindHTML(){
+  return `<div style="font-size:12.5px;font-weight:600;color:var(--muted);margin:2px 0 8px;letter-spacing:.04em">НАПОМИНАТЬ КЛИЕНТУ О ЗАМЕРЕ</div>
+    <div id="mrChips" style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px">${mrChips()}</div>`;
+}
+async function setMeasureRemind(days){
+  try{
+    await api('client_set_measure_remind',{client_id:cardData.client.id, days: days||null});
+    cardData.client.measure_remind_days = days||null;
+    const box=document.getElementById('mrChips'); if(box) box.innerHTML=mrChips();
+    toast(days?'Напоминание включено':'Напоминание выключено');
+  }catch(e){ toast('Ошибка'); }
+}
 async function loadCardPhotos(){
   const box=document.getElementById('ccPhotos'); if(!box||!cardData) return;
   let photos=[];
