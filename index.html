@@ -1000,6 +1000,11 @@ const MONTHS_GEN = ['январь','февраль','март','апрель','�
 function fmtMoney(n){ return Number(n||0).toLocaleString('ru-RU'); }
 function initial(name){ return (name?.[0]||'?').toUpperCase(); }
 function avaInner(url,name){ return url?`<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt="">`:initial(name); }
+/* Всё время — московское (UTC+3, без перехода на лето), не зависит от часового пояса телефона */
+function mskTime(d){ return new Date(d).toLocaleTimeString('ru-RU',{timeZone:'Europe/Moscow',hour:'2-digit',minute:'2-digit'}); }
+function mskDate(d,opts){ return new Date(d).toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow',...(opts||{})}); }
+function mskDateInput(d){ return new Date(d).toLocaleDateString('sv-SE',{timeZone:'Europe/Moscow'}); }
+function mskInputToUTC(date,time){ return new Date(`${date}T${time}:00+03:00`).toISOString(); }
 /* Мини-график (спарклайн) для аналитики. Пока иллюстративный; позже — реальные данные по дням. */
 function sparkSVG(pts){
   pts=(pts||[]).map(Number).filter(v=>!isNaN(v));
@@ -1049,7 +1054,7 @@ function renderHome(){
     const dayLabel = sd.getTime()===today.getTime() ? 'Сегодня'
       : sd.getTime()===today.getTime()+864e5 ? 'Завтра'
       : t.toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
-    const time = t.toTimeString().slice(0,5);
+    const time = mskTime(t);
     const groups = (ns.groups||[]).join(' + ') || ns.kind || 'Тренировка';
     nw.innerHTML = `
       <div class="next">
@@ -1129,7 +1134,7 @@ function renderHome(){
 
   // Колокольчик
   const notes = [];
-  if (ns){ const t=new Date(ns.starts_at); notes.push(`${ns.client_name} — тренировка ${t.toTimeString().slice(0,5)}`); }
+  if (ns){ const t=new Date(ns.starts_at); notes.push(`${ns.client_name} — тренировка ${mskTime(t)}`); }
   expiring.forEach(e=>notes.push(`У ${e.name} заканчивается абонемент`));
   sleeping.forEach(s=>notes.push(`${s.name} не был ${s.days} дней`));
   homeData.notifications = notes;
@@ -1318,7 +1323,7 @@ function paneProfile(){
   let nextHTML = '';
   if (up){
     const t = new Date(up.starts_at);
-    nextHTML = `<div class="row-item"><div class="rdot" style="background:var(--gold)"></div><div class="rmain"><b>Следующая тренировка</b><span>${t.toLocaleDateString('ru-RU')}, ${t.toTimeString().slice(0,5)}</span></div></div>`;
+    nextHTML = `<div class="row-item"><div class="rdot" style="background:var(--gold)"></div><div class="rmain"><b>Следующая тренировка</b><span>${mskDate(t)}, ${mskTime(t)}</span></div></div>`;
   }
   return passHTML + nextHTML + checkinsHTML() + `
     <div class="cc-actions">
@@ -1371,7 +1376,7 @@ function paneWorkouts(){
     }
     html += `<div class="row-item">
       <div class="rdot" style="background:${SC[s.status]||'#9B9892'}"></div>
-      <div class="rdate">${t.toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit'})}<br>${t.toTimeString().slice(0,5)}</div>
+      <div class="rdate">${mskDate(t,{day:'2-digit',month:'2-digit'})}<br>${mskTime(t)}</div>
       <div class="rmain"><b>${s.kind||'Тренировка'}</b><span>${SL[s.status]||s.status}</span></div>
     </div>`;
   });
@@ -1886,7 +1891,7 @@ function openSessSheet(){
   sessCtx = 'card';
   document.getElementById('ssTitle').textContent = 'Тренировка · ' + cardData.client.name;
   document.getElementById('ssClientField').style.display = 'none';
-  document.getElementById('ssDate').value = new Date().toLocaleDateString('sv');
+  document.getElementById('ssDate').value = mskDateInput(new Date());
   const hasPass = !!cardData.activePass;
   document.querySelector('#ssPay [data-p="pass"]').style.opacity = hasPass?'1':'.4';
   setSsPay(hasPass?'pass':'single');
@@ -1904,7 +1909,7 @@ document.getElementById('ssSave').onclick = async ()=>{
   if (!date||!time){ toast('Укажите дату и время'); return; }
   const client_id = sessCtx==='workouts' ? document.getElementById('ssClient').value : cardData.client.id;
   if (!client_id){ toast('Выберите клиента'); return; }
-  const starts_at = new Date(`${date}T${time}`).toISOString();
+  const starts_at = mskInputToUTC(date, time);
   const payload = ()=>({
     client_id, starts_at, source: ssPayMode,
     kind: document.getElementById('ssKind').value.trim()||null,
@@ -1914,7 +1919,7 @@ document.getElementById('ssSave').onclick = async ()=>{
   try {
     const res = await api('session_add', payload());
     if (res.conflict){
-      const t = new Date(res.at).toTimeString().slice(0,5);
+      const t = mskTime(res.at);
       const ok = tg?.showConfirm ? await new Promise(r=>tg.showConfirm(`На ${t} уже есть тренировка с ${res.with_name}. Записать всё равно?`,r)) : confirm('Конфликт. Записать?');
       if (ok){ await api('session_add', { ...payload(), force:true }); }
       else return;
@@ -2292,7 +2297,7 @@ function wkSlot(s){
   const el = document.createElement('div');
   el.className = 'slot' + ((s.status==='done'||s.status==='cancelled'||s.status==='no_show')?' done':'');
   const t = new Date(s.starts_at);
-  const hhmm = `${String(t.getHours()).padStart(2,'0')}:${String(t.getMinutes()).padStart(2,'0')}`;
+  const hhmm = mskTime(t);
   let tag = '<span class="stag">—</span>';
   if (s.pass_id) tag = '<span class="stag ab">Абонемент</span>';
   else if (s.paid) tag = `<span class="stag">Разовая · ${fmtMoney(s.price)} ₽</span>`;
@@ -2338,9 +2343,9 @@ let reschedSess = null;
 function openResched(s){
   reschedSess = s;
   const d = new Date(s.starts_at);
-  document.getElementById('reschedWho').textContent = `${s.client_name} · сейчас ${d.toLocaleDateString('ru-RU')} ${d.toTimeString().slice(0,5)}`;
-  document.getElementById('reschedDate').value = d.toLocaleDateString('sv');
-  document.getElementById('reschedTime').value = d.toTimeString().slice(0,5);
+  document.getElementById('reschedWho').textContent = `${s.client_name} · сейчас ${mskDate(d)} ${mskTime(d)}`;
+  document.getElementById('reschedDate').value = mskDateInput(d);
+  document.getElementById('reschedTime').value = mskTime(d);
   sheet('reschedSheet');
 }
 document.getElementById('reschedSave').onclick = async ()=>{
@@ -2348,7 +2353,7 @@ document.getElementById('reschedSave').onclick = async ()=>{
   const date = document.getElementById('reschedDate').value;
   const time = document.getElementById('reschedTime').value;
   if (!date||!time){ toast('Укажите дату и время'); return; }
-  const starts_at = new Date(`${date}T${time}`).toISOString();
+  const starts_at = mskInputToUTC(date, time);
   try {
     await api('session_reschedule', { session_id: reschedSess.id, starts_at });
     closeSheet('reschedSheet'); toast('Тренировка перенесена');
