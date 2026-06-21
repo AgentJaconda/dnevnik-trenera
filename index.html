@@ -999,6 +999,7 @@ function setDate(){
 const MONTHS_GEN = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
 function fmtMoney(n){ return Number(n||0).toLocaleString('ru-RU'); }
 function initial(name){ return (name?.[0]||'?').toUpperCase(); }
+function avaInner(url,name){ return url?`<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%" alt="">`:initial(name); }
 /* Мини-график (спарклайн) для аналитики. Пока иллюстративный; позже — реальные данные по дням. */
 function sparkSVG(pts){
   pts=(pts||[]).map(Number).filter(v=>!isNaN(v));
@@ -1052,7 +1053,7 @@ function renderHome(){
     const groups = (ns.groups||[]).join(' + ') || ns.kind || 'Тренировка';
     nw.innerHTML = `
       <div class="next">
-        <div class="ava">${initial(ns.client_name)}</div>
+        <div class="ava">${avaInner(ns.avatar_url, ns.client_name)}</div>
         <div class="info">
           <b>${ns.client_name}</b>
           <span>${dayLabel}, ${time}</span>
@@ -1140,13 +1141,13 @@ function renderHome(){
 function showSleeping(){
   const list = homeData.home?.sleeping || [];
   showInfo('Давно не были', list.map(s=>
-    `<div class="row-item"><div class="cl-ava" style="width:38px;height:38px;font-size:15px">${initial(s.name)}</div><div class="rmain"><b>${s.name}</b><span>${s.days} дней назад</span></div></div>`
+    `<div class="row-item"><div class="cl-ava" style="width:38px;height:38px;font-size:15px">${avaInner(s.avatar_url, s.name)}</div><div class="rmain"><b>${s.name}</b><span>${s.days} дней назад</span></div></div>`
   ).join('') || '<p class="empty-pane">Все на связи 👍</p>');
 }
 function showExpiring(){
   const list = homeData.home?.expiring || [];
   showInfo('Заканчиваются абонементы', list.map(e=>
-    `<div class="row-item"><div class="cl-ava" style="width:38px;height:38px;font-size:15px">${initial(e.name)}</div><div class="rmain"><b>${e.name}</b><span>осталось ${e.left} ${e.left===1?'тренировка':e.left<5?'тренировки':'тренировок'}</span></div></div>`
+    `<div class="row-item"><div class="cl-ava" style="width:38px;height:38px;font-size:15px">${avaInner(e.avatar_url, e.name)}</div><div class="rmain"><b>${e.name}</b><span>осталось ${e.left} ${e.left===1?'тренировка':e.left<5?'тренировки':'тренировок'}</span></div></div>`
   ).join('') || '<p class="empty-pane">Нет истекающих абонементов</p>');
 }
 function quickAddClient(){ show('scr-clients'); toast('Добавление клиента — на экране «Клиенты»'); }
