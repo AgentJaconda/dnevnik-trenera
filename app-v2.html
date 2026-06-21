@@ -668,6 +668,13 @@
 <section class="screen" id="scr-cmeasure">
   <div class="wrap" style="padding-top:6px">
     <div class="sec"><h2>Замеры</h2></div>
+    <div class="cm-card" style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;margin-bottom:14px">
+      <div style="font-size:13px;color:var(--muted);font-weight:600">РОСТ</div>
+      <div style="display:flex;align-items:center;gap:7px">
+        <input id="cmHeight" inputmode="numeric" placeholder="178" style="width:74px;text-align:right;background:var(--card-2);border:1px solid var(--line);border-radius:9px;color:var(--text);font-family:'Inter';font-size:16px;font-weight:600;padding:8px 10px">
+        <span style="color:var(--muted);font-size:14px">см</span>
+      </div>
+    </div>
     <div class="cm-card" id="cmWeightCard" style="display:none">
       <div class="cm-w-top">
         <div>
@@ -2344,6 +2351,7 @@ function renderClientV2(){
   cdRenderStrip();
   cdRenderProgram(clientData.program, clientData.exercises);
   cmRender();
+  renderClientHeight();
   loadClientPhotos();
 }
 
@@ -2573,6 +2581,27 @@ function cmRender(){
       <div class="cm-hist-body">${[e.waist&&'талия '+cmFNum(e.waist),e.chest&&'грудь '+cmFNum(e.chest),e.hips&&'бёдра '+cmFNum(e.hips),e.thigh&&'бедро '+cmFNum(e.thigh),e.arm&&'бицепс '+cmFNum(e.arm)].filter(Boolean).join(' · ')}</div></div>`;
   });
 }
+/* ── Рост (клиент, редактируемый прямо в замерах) ── */
+function renderClientHeight(){
+  const el=document.getElementById('cmHeight'); if(!el) return;
+  el.value=clientData?.client?.height_cm ?? '';
+}
+(function(){
+  const el=document.getElementById('cmHeight'); if(!el) return;
+  let prev=null;
+  el.addEventListener('focus',()=>{ prev=el.value; });
+  el.addEventListener('change',async()=>{
+    const v=el.value.trim();
+    if(v===(prev??'')) return;
+    try{
+      const r=await api('client_self_set_height',{height_cm:v||null});
+      if(clientData&&clientData.client) clientData.client.height_cm=r.height_cm;
+      prev=el.value;
+      toast('Рост сохранён');
+    }catch(e){ toast('Не удалось сохранить'); el.value=prev??''; }
+  });
+})();
+
 /* ── Фото прогресса (клиент) ── */
 let cpPhotos=[];
 async function loadClientPhotos(){
