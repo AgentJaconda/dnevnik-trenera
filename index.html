@@ -646,7 +646,7 @@
     </div>
     <div id="cdKbjuWrap" style="display:none">
       <div class="cd-kbju">
-        <div class="cd-kbju-lbl">Цели на день от тренера</div>
+        <div class="cd-kbju-lbl" id="cdKbjuLbl">Цели на день от тренера</div>
         <div class="cd-kj-grid">
           <div class="cd-kj-cell"><b class="num" id="cdKcal">—</b><span>ккал</span></div>
           <div class="cd-kj-cell"><b class="num" id="cdProtein">—</b><span>белки</span></div>
@@ -796,6 +796,8 @@
       <div class="field"><label>Жиры, г</label><input inputmode="numeric" id="kbFat" placeholder="60"></div>
       <div class="field"><label>Углеводы, г</label><input inputmode="numeric" id="kbCarbs" placeholder="180"></div>
     </div>
+    <div style="font-size:12.5px;color:var(--muted);margin:4px 0 8px;font-weight:500">СТАДИЯ</div>
+    <div id="kbStageRow" style="display:flex;gap:7px;margin-bottom:14px"></div>
     <button class="sheet-save" id="kbSave" type="button">Сохранить</button>
   </div>
 </div>
@@ -1806,6 +1808,13 @@ function openPassSheet(){
   sheet('passSheet');
 }
 
+const KB_STAGES=[['deficit','Дефицит'],['maint','Поддержание'],['surplus','Профицит']];
+let kbStage=null;
+function kbRenderStages(){
+  const row=document.getElementById('kbStageRow'); if(!row) return;
+  row.innerHTML=KB_STAGES.map(([v,l])=>`<button type="button" data-s="${v}" class="tab${kbStage===v?' on':''}" style="cursor:pointer;flex:1">${l}</button>`).join('');
+  row.querySelectorAll('button').forEach(b=>{ b.onclick=()=>{ kbStage = (kbStage===b.dataset.s? null : b.dataset.s); kbRenderStages(); }; });
+}
 function openKbjuSheet(){
   const c = cardData.client, k = c.kbju || {};
   document.getElementById('kbName').textContent = c.name;
@@ -1813,12 +1822,15 @@ function openKbjuSheet(){
   document.getElementById('kbProtein').value = k.protein ?? '';
   document.getElementById('kbFat').value = k.fat ?? '';
   document.getElementById('kbCarbs').value = k.carbs ?? '';
+  kbStage = k.stage ?? null;
+  kbRenderStages();
   sheet('kbjuSheet');
 }
 document.getElementById('kbSave').onclick = async ()=>{
   const num=id=>{ const v=parseInt(document.getElementById(id).value,10); return isNaN(v)?null:v; };
   const kbju={ kcal:num('kbKcal'), protein:num('kbProtein'), fat:num('kbFat'), carbs:num('kbCarbs') };
-  const any=Object.values(kbju).some(v=>v!=null);
+  if(kbStage) kbju.stage=kbStage;
+  const any = kbju.kcal!=null||kbju.protein!=null||kbju.fat!=null||kbju.carbs!=null||!!kbStage;
   try {
     await api('client_set_kbju', { client_id: cardData.client.id, kbju: any?kbju:null });
     cardData.client.kbju = any?kbju:null;
@@ -2407,8 +2419,10 @@ function renderClientV2(){
 
   const k=c.kbju;
   const kWrap=document.getElementById('cdKbjuWrap');
-  if (k&&(k.kcal||k.protein||k.fat||k.carbs)){
+  if (k&&(k.kcal||k.protein||k.fat||k.carbs||k.stage)){
     kWrap.style.display='';
+    const STG={deficit:'Дефицит',maint:'Поддержание',surplus:'Профицит'};
+    document.getElementById('cdKbjuLbl').textContent='Цели на день от тренера'+(k.stage&&STG[k.stage]?' · '+STG[k.stage]:'');
     document.getElementById('cdKcal').textContent=k.kcal??'—';
     document.getElementById('cdProtein').textContent=k.protein??'—';
     document.getElementById('cdFat').textContent=k.fat??'—';
