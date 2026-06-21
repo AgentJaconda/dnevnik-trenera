@@ -614,6 +614,12 @@
 <!-- ════════ КЛИЕНТ: Дневник ════════ -->
 <section class="screen" id="scr-cdiary">
   <div class="wrap" style="padding-top:6px">
+    <div id="cdStatsWrap" style="display:none">
+      <div class="cd-kbju">
+        <div class="cd-kbju-lbl">Твой прогресс</div>
+        <div class="cd-kj-grid" id="cdStatsGrid"></div>
+      </div>
+    </div>
     <div id="cdPassWrap" style="display:none">
       <div class="cd-pass">
         <div class="cd-pass-top">
@@ -2289,9 +2295,48 @@ function renderClientV2(){
     document.getElementById('cdCarbs').textContent=k.carbs??'—';
   } else { kWrap.style.display='none'; }
 
+  renderClientStats();
   cdRenderStrip();
   cdRenderProgram(clientData.program, clientData.exercises);
   cmRender();
+}
+
+// Правильное склонение: plural(2,['неделя','недели','недель']) -> 'недели'
+function plural(n, forms){
+  const a=Math.abs(n)%100, b=a%10;
+  if (a>10 && a<20) return forms[2];
+  if (b===1) return forms[0];
+  if (b>=2 && b<=4) return forms[1];
+  return forms[2];
+}
+
+function renderClientStats(){
+  const wrap=document.getElementById('cdStatsWrap');
+  const grid=document.getElementById('cdStatsGrid');
+  if (!wrap||!grid) return;
+  const st=clientData.stats||{};
+  const cells=[];
+  // серия по неделям
+  if (st.streak_weeks>0)
+    cells.push(['🔥 '+st.streak_weeks, plural(st.streak_weeks,['неделя','недели','недель'])+' подряд']);
+  // всего тренировок
+  if (st.workouts_done>0)
+    cells.push([st.workouts_done, plural(st.workouts_done,['тренировка','тренировки','тренировок'])]);
+  // изменение веса из замеров (нужно ≥2 замера с весом)
+  const ws=(clientData.measurements||[])
+    .map(m=>m.values&&m.values.weight)
+    .filter(w=>w!=null&&!isNaN(+w)).map(Number);
+  if (ws.length>=2){
+    const diff=Math.round((ws[ws.length-1]-ws[0])*10)/10;
+    if (diff!==0)
+      cells.push([(diff>0?'+':'−')+fnum(Math.abs(diff))+' кг','вес с начала']);
+  }
+  if (!cells.length){ wrap.style.display='none'; return; }
+  wrap.style.display='';
+  grid.style.gridTemplateColumns='repeat('+cells.length+',1fr)';
+  grid.innerHTML=cells.map(([v,l])=>
+    `<div class="cd-kj-cell"><b class="num" style="color:var(--gold)">${v}</b><span>${l}</span></div>`
+  ).join('');
 }
 
 function cdRenderStrip(){
