@@ -979,20 +979,17 @@ async function api(action, payload = {}){
 }
 
 function dayBounds(){
-  const d = new Date(); d.setHours(0,0,0,0);
+  const start = mskDayStartUTC(new Date());   // полночь сегодня по МСК
   return {
-    today_from: d.toISOString(),
-    today_to: new Date(d.getTime()+864e5).toISOString(),
+    today_from: start.toISOString(),
+    today_to: new Date(start.getTime()+864e5).toISOString(),
     week_from: new Date(Date.now()-7*864e5).toISOString(),
   };
 }
 
 /* ═══════════ Дата в шапке ═══════════ */
 function setDate(){
-  const d = new Date();
-  const days=['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
-  const mon=['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
-  document.getElementById('subtitle').textContent = `${days[d.getDay()]}, ${d.getDate()} ${mon[d.getMonth()]}`;
+  document.getElementById('subtitle').textContent = mskDate(new Date(), {weekday:'long', day:'numeric', month:'long'});
 }
 
 /* ═══════════ Рендер Главной ═══════════ */
@@ -1005,6 +1002,7 @@ function mskTime(d){ return new Date(d).toLocaleTimeString('ru-RU',{timeZone:'Eu
 function mskDate(d,opts){ return new Date(d).toLocaleDateString('ru-RU',{timeZone:'Europe/Moscow',...(opts||{})}); }
 function mskDateInput(d){ return new Date(d).toLocaleDateString('sv-SE',{timeZone:'Europe/Moscow'}); }
 function mskInputToUTC(date,time){ return new Date(`${date}T${time}:00+03:00`).toISOString(); }
+function mskDayStartUTC(d){ return new Date(`${mskDateInput(d)}T00:00:00+03:00`); } // момент = полночь по МСК этого дня
 /* Мини-график (спарклайн) для аналитики. Пока иллюстративный; позже — реальные данные по дням. */
 function sparkSVG(pts){
   pts=(pts||[]).map(Number).filter(v=>!isNaN(v));
@@ -1049,11 +1047,11 @@ function renderHome(){
   const ns = h.home?.next_session;
   if (ns){
     const t = new Date(ns.starts_at);
-    const today = new Date(); today.setHours(0,0,0,0);
-    const sd = new Date(t); sd.setHours(0,0,0,0);
-    const dayLabel = sd.getTime()===today.getTime() ? 'Сегодня'
-      : sd.getTime()===today.getTime()+864e5 ? 'Завтра'
-      : t.toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
+    const today = mskDayStartUTC(new Date()).getTime();
+    const sd = mskDayStartUTC(t).getTime();
+    const dayLabel = sd===today ? 'Сегодня'
+      : sd===today+864e5 ? 'Завтра'
+      : mskDate(t,{day:'numeric',month:'long'});
     const time = mskTime(t);
     const groups = (ns.groups||[]).join(' + ') || ns.kind || 'Тренировка';
     nw.innerHTML = `
@@ -1565,8 +1563,8 @@ const PROG_GROUPS = ['Грудь','Спина','Ноги','Плечи','Руки
 const PROG_LIB = ['Приседания','Жим лёжа','Становая тяга','Румынская тяга','Выпады','Жим гантелей сидя','Тяга верхнего блока','Жим ногами','Подтягивания','Планка'];
 let exHistory=null;   // личная история упражнений тренера {name,unit,muscle_group,count}
 let progClientId=null, progDate=null, progEx=[], progGroupsSel=new Set(), progDays={};
-const pIso = d => d.toLocaleDateString('sv');
-const pDayStart = d => { const x=new Date(d); x.setHours(0,0,0,0); return x; };
+const pIso = d => mskDateInput(d);                 // ключ дня = МСК-дата
+const pDayStart = d => mskDayStartUTC(d);           // начало дня по МСК
 const pnum = n => String(n).replace('.', ',');
 
 async function editProgram(){
@@ -1593,7 +1591,7 @@ function progClose(){
   if (cardData) renderCard();   // обновить вкладку «Программа» в карточке
 }
 async function progRenderDays(){
-  const start = pDayStart(new Date()); start.setDate(start.getDate()-7);
+  const start = new Date(pDayStart(new Date()).getTime() - 7*864e5);
   try {
     const res = await api('program_days', {
       client_id: progClientId, from: pIso(start),
@@ -1609,7 +1607,7 @@ async function progRenderDays(){
     const has = !!progDays[pIso(d)];
     const on = pIso(d)===pIso(progDate);
     html+=`<div class="day${on?' on':''}" data-iso="${pIso(d)}">
-      <div class="dow">${DOW[d.getDay()]}</div><div class="dnum num">${d.getDate()}</div>
+      <div class="dow">${mskDate(d,{weekday:'short'})}</div><div class="dnum num">${mskDate(d,{day:'numeric'})}</div>
       <div class="ddot${has?'':' hidden'}"></div></div>`;
   }
   wrap.innerHTML=html;
@@ -2226,11 +2224,10 @@ let wkSel = null;        // выбранный день (Date, 00:00)
 let wkSessions = [];     // тренировки видимого диапазона
 const DOW = ['вс','пн','вт','ср','чт','пт','сб'];
 
-function wkDayStart(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
+function wkDayStart(d){ return mskDayStartUTC(d); } // начало дня по МСК
 function wkRange(){
-  const start = wkDayStart(new Date()); start.setDate(start.getDate()-7);
-  const end = wkDayStart(new Date()); end.setDate(end.getDate()+14);
-  return { start, end };
+  const t0 = wkDayStart(new Date()).getTime();
+  return { start: new Date(t0 - 7*864e5), end: new Date(t0 + 14*864e5) };
 }
 async function loadWorkouts(){
   if (!wkSel) wkSel = wkDayStart(new Date());
@@ -2261,13 +2258,13 @@ function renderDays(){
   const { start } = wkRange();
   let html = '';
   for (let i=0;i<21;i++){
-    const d = new Date(start); d.setDate(start.getDate()+i);
+    const d = new Date(start.getTime() + i*864e5);   // полночь по МСК i-го дня
     const key = d.getTime();
     const has = wkSessions.some(s => wkDayStart(new Date(s.starts_at)).getTime()===key && s.status!=='cancelled');
     const on = key===wkSel.getTime();
     html += `<div class="day${on?' on':''}" data-k="${key}">
-      <div class="dow">${DOW[d.getDay()]}</div>
-      <div class="dnum num">${d.getDate()}</div>
+      <div class="dow">${mskDate(d,{weekday:'short'})}</div>
+      <div class="dnum num">${mskDate(d,{day:'numeric'})}</div>
       <div class="ddot${has?'':' hidden'}"></div>
     </div>`;
   }
@@ -2283,7 +2280,7 @@ function renderDayList(){
   const key = wkSel.getTime();
   const tk = wkDayStart(new Date()).getTime();
   const word = key===tk ? 'Сегодня' : key===tk+864e5 ? 'Завтра' : key===tk-864e5 ? 'Вчера' : '';
-  lbl.textContent = (word?word+', ':'') + wkSel.toLocaleDateString('ru-RU',{weekday:'long',day:'numeric',month:'long'});
+  lbl.textContent = (word?word+', ':'') + mskDate(wkSel,{weekday:'long',day:'numeric',month:'long'});
   const list = document.getElementById('wkList');
   const day = wkSessions
     .filter(s => wkDayStart(new Date(s.starts_at)).getTime()===key)
@@ -2372,7 +2369,7 @@ function openSessForWorkouts(){
   const sel = document.getElementById('ssClient');
   sel.innerHTML = active.map(c=>`<option value="${c.id}">${c.name}${c.pass?` (абонемент ${c.pass.left}/${c.pass.total})`:''}</option>`).join('');
   sel.onchange = ()=>ssSyncPay(active.find(x=>x.id===sel.value));
-  document.getElementById('ssDate').value = (wkSel||wkDayStart(new Date())).toLocaleDateString('sv');
+  document.getElementById('ssDate').value = mskDateInput(wkSel||wkDayStart(new Date()));
   ssSyncPay(active[0]);
   sheet('sessSheet');
 }
@@ -2388,12 +2385,11 @@ document.getElementById('wkAddBtn').onclick = openSessForWorkouts;
 const fnum = n => n != null ? String(n).replace('.', ',') : '0';
 function debounce(fn, delay){ let t; return function(){ clearTimeout(t); t=setTimeout(fn, delay); }; }
 let clientData = null;
-let cdDate = new Date(); cdDate.setHours(0,0,0,0);
+let cdDate = mskDayStartUTC(new Date());
 
 function clientDayBounds(){
-  const s=new Date(); s.setDate(s.getDate()-7); s.setHours(0,0,0,0);
-  const e=new Date(); e.setDate(e.getDate()+14); e.setHours(23,59,59,0);
-  return { days_from:s.toLocaleDateString('sv'), days_to:e.toLocaleDateString('sv') };
+  const t0 = mskDayStartUTC(new Date()).getTime();
+  return { days_from: mskDateInput(new Date(t0-7*864e5)), days_to: mskDateInput(new Date(t0+14*864e5)) };
 }
 
 function switchToClient(){
@@ -2521,16 +2517,16 @@ function renderClientStats(){
 
 function cdRenderStrip(){
   const strip=document.getElementById('cdStrip');
-  const start=new Date(); start.setDate(start.getDate()-7); start.setHours(0,0,0,0);
+  const start=new Date(mskDayStartUTC(new Date()).getTime()-7*864e5);
   const days={}; (clientData.days||[]).forEach(d=>{ days[d.for_date]=true; });
-  const DOW=['вс','пн','вт','ср','чт','пт','сб'];
   strip.innerHTML=''; let selEl=null;
+  const curKey=mskDateInput(cdDate);
   for (let i=0;i<21;i++){
     const d=new Date(start.getTime()+i*864e5);
-    const di=d.toLocaleDateString('sv');
+    const di=mskDateInput(d);
     const el=document.createElement('div'); el.className='day';
-    if (di===cdDate.toLocaleDateString('sv')){ el.classList.add('on'); selEl=el; }
-    el.innerHTML=`<div class="dow">${DOW[d.getDay()]}</div><div class="dnum">${d.getDate()}</div><div class="ddot${days[di]?'':' hidden'}"></div>`;
+    if (di===curKey){ el.classList.add('on'); selEl=el; }
+    el.innerHTML=`<div class="dow">${mskDate(d,{weekday:'short'})}</div><div class="dnum">${mskDate(d,{day:'numeric'})}</div><div class="ddot${days[di]?'':' hidden'}"></div>`;
     el.onclick=async()=>{ cdDate=d; await cdLoadDay(); };
     strip.appendChild(el);
   }
@@ -2540,7 +2536,7 @@ function cdRenderStrip(){
 async function cdLoadDay(){
   document.getElementById('cdProg').innerHTML='<p style="text-align:center;color:var(--faint);padding:24px 0;font-size:14px">Загрузка…</p>';
   try {
-    const res=await api('client_self_state',{for_date:cdDate.toLocaleDateString('sv'),...clientDayBounds()});
+    const res=await api('client_self_state',{for_date:mskDateInput(cdDate),...clientDayBounds()});
     clientData={...clientData,...res};
     cdRenderStrip();
     cdRenderProgram(res.program, res.exercises);
@@ -2556,9 +2552,9 @@ async function cdRefresh(){
 }
 
 function cdRenderProgram(program, exercises){
-  const isToday=cdDate.toLocaleDateString('sv')===new Date().toLocaleDateString('sv');
+  const isToday=mskDateInput(cdDate)===mskDateInput(new Date());
   document.getElementById('cdProgTitle').textContent=isToday?'Программа на сегодня':
-    'Программа · '+cdDate.toLocaleDateString('ru-RU',{day:'numeric',month:'long'});
+    'Программа · '+mskDate(cdDate,{day:'numeric',month:'long'});
   const noteWrap=document.getElementById('cdNoteWrap');
   if (program?.coach_note){ noteWrap.style.display=''; document.getElementById('cdNoteText').textContent=program.coach_note; }
   else noteWrap.style.display='none';
@@ -2622,7 +2618,7 @@ function cdExCard(ex, num){
 
 /* ─── Замеры клиента ─── */
 const cmMonths=['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
-function cmFDate(d){ return d.getDate()+' '+cmMonths[d.getMonth()]; }
+function cmFDate(d){ const [,M,D]=mskDateInput(d).split('-'); return (+D)+' '+cmMonths[(+M)-1]; }
 function cmFNum(v){ if(v==null||v==='—')return'—'; const n=Number(v); return isNaN(n)?String(v):n%1===0?String(n):n.toFixed(1).replace('.',','); }
 
 function cmRender(){
@@ -2793,7 +2789,7 @@ document.getElementById('cmSaveBtn').onclick=async()=>{
       clientData.measurements=(clientData.measurements||[]).map(m=>m.id===cmEditId?res.measurement:m);
       toast('Замер обновлён');
     } else {
-      const res=await api('client_self_measure_add',{measured_at:new Date().toLocaleDateString('sv'),values});
+      const res=await api('client_self_measure_add',{measured_at:mskDateInput(new Date()),values});
       clientData.measurements=[...(clientData.measurements||[]),res.measurement];
       toast('Замер сохранён · тренер увидит динамику');
     }
